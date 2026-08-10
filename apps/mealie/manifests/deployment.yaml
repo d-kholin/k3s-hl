@@ -34,7 +34,7 @@ spec:
       containers:
         - name: mealie
           # Deliberately pinned behind latest (v3.22.0) as a Renovate test.
-          image: ghcr.io/mealie-recipes/mealie:v3.20.1
+          image: ghcr.io/mealie-recipes/mealie:v3.22.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
