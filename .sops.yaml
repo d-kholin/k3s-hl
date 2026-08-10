@@ -1,0 +1,14 @@
+# SOPS configuration for age-encrypted secrets
+#
+# AGE_PUBLIC_KEY_ARGOCD  = public key whose private key lives in the
+#                          sops-age secret in the argocd namespace
+# AGE_PUBLIC_KEY_PERSONAL = my personal age public key
+#
+# Replace both placeholders with real age public keys before encrypting secrets.
+
+creation_rules:
+  - path_regex: '.*\.sops\.yaml$'
+    encrypted_regex: '^(data|stringData)$'
+    age: >-
+      age1u897l89mkwn8jpwckjaln0fw50thp7mfs2c78cx0aw48slfyu5nsvvt4ft,
+      age1gn97pnarxh3wkdv2l8ynk6s7ted0u5hgudhxyfec2djwy3dsapsss2ak8p

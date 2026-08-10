@@ -1,0 +1,16 @@
+# ClusterIP Service for the example Deployment.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-app
+  labels:
+    app: example-app
+spec:
+  type: ClusterIP
+  selector:
+    app: example-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

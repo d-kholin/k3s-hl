@@ -1,0 +1,13 @@
+# Kustomize overlay for the example app + KSOPS-generated Secret.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: example-app
+
+resources:
+  - deployment.yaml
+  - service.yaml
+
+generators:
+  - secret-generator.yaml

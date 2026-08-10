@@ -1,0 +1,9 @@
+# Environment / secret material (never commit plaintext)
+*.env
+.env.*
+secrets.env
+*.pem
+*.key
+
+# Encrypted SOPS files are safe to commit
+!*.sops.yaml
