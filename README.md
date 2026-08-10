@@ -3,17 +3,19 @@
 Homelab GitOps repository for a k3s cluster managed by Argo CD.
 Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age) and decrypted in-cluster by [KSOPS](https://github.com/viaduct-ai/kustomize-sops).
 
+External access is intended via **Pangolin + Newt** (ClusterIP services), not LoadBalancer / MetalLB.
+
 ## Layout
 
 ```
 .
 ├── .sops.yaml
 ├── bootstrap/
-│   └── root-app.yaml          # App-of-Apps root (points at infrastructure/)
+│   └── root-app.yaml          # App-of-Apps root (infrastructure/ + apps/)
 ├── infrastructure/
-│   ├── metallb/               # MetalLB Helm + L2 IP pool
 │   └── longhorn/              # Longhorn Helm (default StorageClass)
 └── apps/
+    ├── actual-budget/         # Actual Budget (personal finance)
     └── example-app/           # Scaffold only
 ```
 
@@ -21,20 +23,30 @@ Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + [age](https
 
 | Component | Purpose | Notes |
 |-----------|---------|--------|
-| **MetalLB** | LoadBalancer Services on bare metal | L2 mode, pool `192.168.1.10–192.168.1.99` |
 | **Longhorn** | Distributed block storage | Default StorageClass, **3 replicas**, data path `/var/lib/longhorn` |
 
-### Prerequisites (host / k3s)
+## Apps
 
-**MetalLB — disable k3s ServiceLB** (klipper-lb conflicts with MetalLB):
+| App | Purpose | Access |
+|-----|---------|--------|
+| **actual-budget** | [Actual Budget](https://actualbudget.org) sync server + web UI | ClusterIP `:5006` — expose with Pangolin/Newt |
+
+### Actual Budget
+
+- Image: `actualbudget/actual-server:26.8.1-alpine`
+- Data: Longhorn PVC `actual-budget-data` (**5Gi**, RWO) mounted at `/data`
+- In-cluster URL: `http://actual-budget.actual-budget.svc.cluster.local:5006`
+- First visit (via Pangolin or port-forward): set the **server password** in the UI (stored in the volume; not in git)
 
 ```bash
-# On each server node, ensure k3s is started with ServiceLB disabled, e.g. in
-# /etc/rancher/k3s/config.yaml:
-#   disable:
-#     - servicelb
-# Then restart k3s and remove any leftover svclb-* DaemonSets if present.
+kubectl -n actual-budget get pods,svc,pvc
+
+# Local smoke test without Pangolin:
+kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
+# open http://127.0.0.1:5006
 ```
+
+### Prerequisites (host / k3s)
 
 **Longhorn — on every node** that should run replicas:
 
@@ -49,32 +61,22 @@ Ensure enough disk under `/var/lib/longhorn` (or change `defaultDataPath` in `in
 ### Bootstrap Argo CD apps
 
 ```bash
-# After Argo CD can clone this repo (SSH deploy key or equivalent):
 kubectl apply -f bootstrap/root-app.yaml
 ```
 
-Root Application source: `https://github.com/d-kholin/k3s-hl.git` → path `infrastructure`.
+Root Application sources: `https://github.com/d-kholin/k3s-hl.git` → paths `infrastructure` and `apps`.
 
 ### Verify
 
 ```bash
-# MetalLB
-kubectl -n metallb-system get pods
-kubectl -n metallb-system get ipaddresspools,l2advertisements
-
 # Longhorn
 kubectl -n longhorn-system get pods
 kubectl get storageclass
 # expect longhorn (default)
-```
 
-Smoke-test LoadBalancer (after MetalLB is healthy):
-
-```bash
-kubectl create deploy lb-test --image=nginx --port=80
-kubectl expose deploy lb-test --port=80 --type=LoadBalancer
-kubectl get svc lb-test -w
-# EXTERNAL-IP should be in 192.168.1.10–192.168.1.99
+# Apps
+kubectl -n argocd get applications
+kubectl -n actual-budget get pods,svc
 ```
 
 ## How secrets work (SOPS + age + KSOPS)
@@ -99,11 +101,12 @@ sops path/to/file.sops.yaml
 ## Open items / reminders
 
 - [x] **Argo CD ↔ git access**: apps use public HTTPS `https://github.com/d-kholin/k3s-hl.git` (no credentials required).
-- [ ] **DHCP vs MetalLB pool**: pool is `192.168.1.10-192.168.1.99`. Exclude that range from your router DHCP (or shrink the pool) so addresses are not double-assigned.
+- [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
+- [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget).
 - [ ] **Longhorn node readiness**: open-iscsi on all storage nodes before expecting volumes to schedule.
 - [ ] **SOPS in Argo**: KSOPS plugin + `sops-age` secret in `argocd` when you start using encrypted secrets for real apps.
-- [ ] Chart pins today: MetalLB `0.14.9`, Longhorn `1.8.1` — bump `targetRevision` in the Application manifests when you want upgrades.
+- [ ] Chart pins today: Longhorn `1.8.1` — bump `targetRevision` in the Application manifest when you want upgrades.
 
 ## Example app
 
-`apps/example-app/` is a minimal nginx Deployment + Service with a KSOPS-backed Secret. Scaffolding only — not wired into the root app yet.
+`apps/example-app/` is a minimal nginx Deployment + Service with a KSOPS-backed Secret. Scaffolding only — not wired into the root app.

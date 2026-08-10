@@ -18,7 +18,7 @@ defaultSettings:
   storageMinimalAvailablePercentage: "10"
   storageOverProvisioningPercentage: "100"
 
-# Keep UI ClusterIP; expose later via Ingress/MetalLB if desired.
+# Keep UI ClusterIP; expose later via Pangolin/Newt or Ingress if desired.
 service:
   ui:
     type: ClusterIP

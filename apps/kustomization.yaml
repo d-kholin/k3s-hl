@@ -1,0 +1,8 @@
+# App-of-Apps: Argo CD Applications for user workloads.
+# Applied by bootstrap/root-app.yaml (multi-source path: apps).
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - actual-budget/application.yaml
