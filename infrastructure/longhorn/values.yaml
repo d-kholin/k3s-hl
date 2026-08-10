@@ -1,5 +1,5 @@
 # Longhorn Helm values.
-# Chart: https://charts.longhorn.io  longhorn 1.8.1
+# Chart: https://charts.longhorn.io (version pinned in application.yaml)
 #
 # Default StorageClass with 3 replicas. Data path: /var/lib/longhorn on each node.
 
@@ -23,6 +23,9 @@ defaultSettings:
   # On node death, force-delete pods using Longhorn volumes so RWO volumes can
   # detach and replacement pods on other nodes can attach (default: do-nothing).
   nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+  # After a chart upgrade, live-upgrade attached volumes' engines automatically
+  # (required before the next minor upgrade; brief sub-second IO pause).
+  concurrentAutomaticEngineUpgradePerNodeLimit: "1"
 
 # S3-compatible backup target (self-hosted Garage; bucket naku-longhorn must
 # exist). The @region token must match Garage's s3_region ("garage" by

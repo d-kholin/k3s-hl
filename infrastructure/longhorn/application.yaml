@@ -23,7 +23,8 @@ spec:
   sources:
     - repoURL: https://charts.longhorn.io
       chart: longhorn
-      targetRevision: 1.8.1
+      # Upgrade path: one minor at a time (1.8 -> 1.9 -> 1.10 -> 1.11 -> 1.12).
+      targetRevision: 1.9.2
       helm:
         releaseName: longhorn
         valueFiles:
