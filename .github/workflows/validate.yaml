@@ -1,0 +1,59 @@
+# Validates every kustomization before Argo CD (which tracks HEAD with
+# automated prune) gets to deploy it: kustomize build + kubeconform schema
+# check, plus a guard that no *.sops.yaml was ever committed unencrypted.
+#
+# KSOPS can't decrypt in CI (no age key, by design) — a stub `ksops` binary
+# emits zero resources, so Secrets are absent from the validated output.
+name: validate
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kustomize and kubeconform
+        run: |
+          cd /tmp
+          curl -sSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash -s -- 5.7.1 /usr/local/bin >/dev/null
+          curl -sSL -o kubeconform.tar.gz "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz"
+          tar xf kubeconform.tar.gz kubeconform && sudo mv kubeconform /usr/local/bin/
+          kustomize version && kubeconform -v
+
+      - name: Stub ksops (no decryption in CI)
+        run: |
+          printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
+          sudo chmod +x /usr/local/bin/ksops
+
+      - name: Ensure all *.sops.yaml files are encrypted
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            if ! grep -q 'ENC\[AES256_GCM' "$f"; then
+              echo "::error file=$f::$f is not SOPS-encrypted"
+              fail=1
+            fi
+          done < <(find . -name '*.sops.yaml' -not -path './.git/*')
+          exit $fail
+
+      - name: kustomize build + kubeconform
+        run: |
+          fail=0
+          while IFS= read -r kfile; do
+            dir=$(dirname "$kfile")
+            echo "==> $dir"
+            if ! kustomize build --enable-alpha-plugins --enable-exec "$dir" \
+              | kubeconform -strict -summary \
+                  -schema-location default \
+                  -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+                  -ignore-missing-schemas; then
+              echo "::error::validation failed for $dir"
+              fail=1
+            fi
+          done < <(find . -name kustomization.yaml -not -path './.git/*' | sort)
+          exit $fail

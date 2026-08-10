@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: newt
 
 resources:
+  - namespace.yaml
   - deployment-site-a.yaml
   - deployment-site-b.yaml
   - service-site-a.yaml
@@ -12,5 +13,9 @@ resources:
 generators:
   - ksops-generator.yaml
 
-commonLabels:
-  app.kubernetes.io/name: newt
+# Metadata-only labels (selectors are set explicitly in the manifests —
+# the deprecated commonLabels used to inject them, and selectors are immutable).
+labels:
+  - pairs:
+      app.kubernetes.io/name: newt
+    includeSelectors: false

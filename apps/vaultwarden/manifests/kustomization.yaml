@@ -4,12 +4,18 @@ kind: Kustomization
 namespace: vaultwarden
 
 resources:
+  - namespace.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+  - networkpolicy.yaml
 
 generators:
   - ksops-generator.yaml
 
-commonLabels:
-  app.kubernetes.io/name: vaultwarden
+# Metadata-only labels (selectors are set explicitly in the manifests —
+# the deprecated commonLabels used to inject them, and selectors are immutable).
+labels:
+  - pairs:
+      app.kubernetes.io/name: vaultwarden
+    includeSelectors: false

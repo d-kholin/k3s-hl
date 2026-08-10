@@ -1,0 +1,11 @@
+# Managed namespace. Newt needs root + NET_ADMIN/NET_RAW + the /dev/net/tun
+# hostPath, so this namespace stays "privileged" (explicitly, in git) while
+# the app namespaces enforce "restricted".
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: newt
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  labels:
+    pod-security.kubernetes.io/enforce: privileged

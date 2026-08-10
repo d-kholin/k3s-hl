@@ -4,9 +4,15 @@ kind: Kustomization
 namespace: actual-budget
 
 resources:
+  - namespace.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml
+  - networkpolicy.yaml
 
-commonLabels:
-  app.kubernetes.io/name: actual-budget
+# Metadata-only labels (selectors are set explicitly in the manifests —
+# the deprecated commonLabels used to inject them, and selectors are immutable).
+labels:
+  - pairs:
+      app.kubernetes.io/name: actual-budget
+    includeSelectors: false

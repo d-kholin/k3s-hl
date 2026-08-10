@@ -13,13 +13,23 @@ spec:
   selector:
     matchLabels:
       app: actual-budget
+      app.kubernetes.io/name: actual-budget
   template:
     metadata:
       labels:
         app: actual-budget
+        app.kubernetes.io/name: actual-budget
     spec:
+      # Restricted PSA compliant. fsGroup 1001 (pre-existing) keeps /data files
+      # from the root-era usable by uid 1001.
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
         fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: actual-server
           image: actualbudget/actual-server:26.8.1-alpine
@@ -33,9 +43,17 @@ spec:
               value: "5006"
             - name: ACTUAL_HOSTNAME
               value: "0.0.0.0"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
               path: /
@@ -61,3 +79,5 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: actual-budget-data-encrypted
+        - name: tmp
+          emptyDir: {}

@@ -9,6 +9,7 @@ spec:
   type: ClusterIP
   selector:
     app: vaultwarden
+    app.kubernetes.io/name: vaultwarden
   ports:
     - name: http
       port: 80

@@ -13,18 +13,30 @@ spec:
   selector:
     matchLabels:
       app: vaultwarden
+      app.kubernetes.io/name: vaultwarden
   template:
     metadata:
       labels:
         app: vaultwarden
+        app.kubernetes.io/name: vaultwarden
     spec:
+      # Restricted PSA compliant. fsGroup lets uid 1000 use /data files that
+      # were created back when the container ran as root.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: vaultwarden
           image: vaultwarden/server:1.37.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           env:
             - name: ADMIN_TOKEN
@@ -35,9 +47,20 @@ spec:
             # Disable public signups after you create your account via /admin invites.
             - name: SIGNUPS_ALLOWED
               value: "false"
+            # Non-root can't bind :80 — listen on 8080 (Service still exposes 80).
+            - name: ROCKET_PORT
+              value: "8080"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
               path: /alive
@@ -63,3 +86,5 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: vaultwarden-data-encrypted
+        - name: tmp
+          emptyDir: {}

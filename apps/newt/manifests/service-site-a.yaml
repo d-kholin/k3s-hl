@@ -12,6 +12,7 @@ spec:
   type: ClusterIP
   selector:
     app: newt-site-a
+    app.kubernetes.io/name: newt
   ports:
     - name: wg
       port: 51820

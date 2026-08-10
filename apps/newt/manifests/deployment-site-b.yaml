@@ -14,10 +14,12 @@ spec:
   selector:
     matchLabels:
       app: newt-site-b
+      app.kubernetes.io/name: newt
   template:
     metadata:
       labels:
         app: newt-site-b
+        app.kubernetes.io/name: newt
         app.kubernetes.io/part-of: newt
     spec:
       automountServiceAccountToken: false

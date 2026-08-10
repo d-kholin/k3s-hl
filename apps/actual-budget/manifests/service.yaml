@@ -9,6 +9,7 @@ spec:
   type: ClusterIP
   selector:
     app: actual-budget
+    app.kubernetes.io/name: actual-budget
   ports:
     - name: http
       port: 5006
