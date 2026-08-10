@@ -16,8 +16,14 @@ persistence:
 defaultSettings:
   defaultReplicaCount: "3"
   defaultDataPath: /var/lib/longhorn
-  # Allow scheduling on nodes that already have a replica (homelab-friendly)
-  replicaSoftAntiAffinity: "true"
+  # Hard anti-affinity: never place two replicas of a volume on one node.
+  # With 3 nodes / 3 replicas, doubling up adds no redundancy — during a
+  # one-node outage the volume stays degraded and rebuilds when the node
+  # returns (or immediately if a failed replica can be reused).
+  replicaSoftAntiAffinity: "false"
+  # Rebalance replicas when nodes become schedulable again (e.g. move a
+  # duplicate replica off a node once the failed node rejoins).
+  replicaAutoBalance: least-effort
   storageMinimalAvailablePercentage: "10"
   storageOverProvisioningPercentage: "100"
   # On node death, force-delete pods using Longhorn volumes so RWO volumes can
