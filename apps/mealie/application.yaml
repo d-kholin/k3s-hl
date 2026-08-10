@@ -1,0 +1,23 @@
+# Argo CD Application for Mealie (recipe manager & meal planner).
+# Workload path: apps/mealie/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mealie
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/mealie/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mealie
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

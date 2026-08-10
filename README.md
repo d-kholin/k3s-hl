@@ -66,6 +66,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 | App | Purpose | Access |
 |-----|---------|--------|
 | **actual-budget** | [Actual Budget](https://actualbudget.org) sync server + web UI | ClusterIP `:5006` — expose with Pangolin/Newt |
+| **mealie** | [Mealie](https://mealie.io) recipe manager & meal planner | ClusterIP `:9000` — expose with Pangolin/Newt |
 | **vaultwarden** | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (Bitwarden-compatible) | ClusterIP `:80` (container listens on 8080) — expose with Pangolin/Newt; admin at `/admin` |
 | **newt** | [Newt](https://github.com/fosrl/newt) Pangolin tunnel client | Two sites (redundant), spread across nodes |
 
@@ -89,6 +90,22 @@ kubectl -n actual-budget get pods,svc,pvc
 # Local smoke test without Pangolin:
 kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
 # open http://127.0.0.1:5006
+```
+
+### Mealie
+
+- Image: `ghcr.io/mealie-recipes/mealie:v3.20.1` (pinned behind latest on purpose — Renovate test)
+- Data: Longhorn PVC `mealie-data-encrypted` (**5Gi**, RWO) mounted at `/app/data` (SQLite)
+- In-cluster URL: `http://mealie.mealie.svc.cluster.local:9000`
+- First login: `changeme@example.com` / `MyPassword` — change immediately. Signups disabled (`ALLOW_SIGNUP=false`).
+- `BASE_URL` is set to `https://mealie.thegriffiths.ca`; keep it in sync with the Pangolin resource.
+
+```bash
+kubectl -n mealie get pods,svc,pvc
+
+# Local smoke test without Pangolin:
+kubectl -n mealie port-forward svc/mealie 9000:9000
+# open http://127.0.0.1:9000
 ```
 
 ### Vaultwarden

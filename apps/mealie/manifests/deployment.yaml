@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mealie
+  namespace: mealie
+  labels:
+    app: mealie
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: mealie
+      app.kubernetes.io/name: mealie
+  template:
+    metadata:
+      labels:
+        app: mealie
+        app.kubernetes.io/name: mealie
+    spec:
+      # Restricted PSA compliant. Mealie's entrypoint only needs root for its
+      # PUID/PGID chown dance; started directly as the PUID user it skips that
+      # and just runs the app, so PUID/PGID below must match runAsUser/Group.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mealie
+          # Deliberately pinned behind latest (v3.22.0) as a Renovate test.
+          image: ghcr.io/mealie-recipes/mealie:v3.20.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: America/Edmonton
+            # Default admin is changeme@example.com / MyPassword — change it on
+            # first login, keep signups closed.
+            - name: ALLOW_SIGNUP
+              value: "false"
+            # Used for share/notification links and OIDC callbacks — keep in
+            # sync with the Pangolin resource URL.
+            - name: BASE_URL
+              value: https://mealie.thegriffiths.ca
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /api/app/about
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/app/about
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: mealie-data-encrypted
+        - name: tmp
+          emptyDir: {}
