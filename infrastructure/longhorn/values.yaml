@@ -17,6 +17,9 @@ defaultSettings:
   replicaSoftAntiAffinity: "true"
   storageMinimalAvailablePercentage: "10"
   storageOverProvisioningPercentage: "100"
+  # On node death, force-delete pods using Longhorn volumes so RWO volumes can
+  # detach and replacement pods on other nodes can attach (default: do-nothing).
+  nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
 
 # Keep UI ClusterIP; expose later via Pangolin/Newt or Ingress if desired.
 service:
