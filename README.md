@@ -164,7 +164,7 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 - [ ] **Longhorn node readiness**: open-iscsi on all storage nodes before expecting volumes to schedule.
 - [ ] **SOPS in Argo**: KSOPS plugin + `sops-age` secret in `argocd` — required for Vaultwarden `secret.sops.yaml`.
 - [x] **Vaultwarden secret**: `ADMIN_TOKEN` encrypted in `secret.sops.yaml` (still needs KSOPS + `sops-age` in Argo).
-- [ ] Chart pins today: Longhorn `1.8.1` — bump `targetRevision` in the Application manifest when you want upgrades.
+- [ ] Chart pins today: Longhorn `1.12.0` — bump `targetRevision` in the Application manifest when you want upgrades (one minor version at a time; check that release's Important Notes first).
 - [ ] **Backup target**: set real bucket in `infrastructure/longhorn/values.yaml` (`defaultBackupStore.backupTarget`) and fill credentials: `sops infrastructure/longhorn-config/manifests/backup-target-secret.sops.yaml`.
 - [ ] **Migrate volumes to `longhorn-encrypted`** before the first 3 AM backup runs (plaintext backups otherwise) — see `docs/encrypted-volume-migration.md`.
 - [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups.
