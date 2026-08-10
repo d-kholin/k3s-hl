@@ -1,0 +1,7 @@
+# TLS terminates in front of argocd-server (Pangolin), so it serves plain HTTP.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+data:
+  server.insecure: "true"

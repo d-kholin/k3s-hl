@@ -1,0 +1,47 @@
+# KSOPS wiring for the repo-server: an init container drops ksops + a
+# matching kustomize into /custom-tools, which shadow the bundled binaries.
+# SOPS decryption uses the age key from the sops-age secret — that secret is
+# NOT in git (it's the decryption root); create it from the offline key:
+#   kubectl -n argocd create secret generic sops-age --from-file=keys.txt=<age-key-file>
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: install-ksops
+          image: viaductoss/ksops:v4.5.1
+          command:
+            - /usr/local/bin/ksops
+            - install
+            - --with-kustomize
+            - /custom-tools
+          volumeMounts:
+            - name: custom-tools
+              mountPath: /custom-tools
+      containers:
+        - name: argocd-repo-server
+          env:
+            - name: XDG_CONFIG_HOME
+              value: /.config
+            - name: SOPS_AGE_KEY_FILE
+              value: /.config/sops/age/keys.txt
+          volumeMounts:
+            - name: custom-tools
+              mountPath: /usr/local/bin/kustomize
+              subPath: kustomize
+            - name: custom-tools
+              mountPath: /usr/local/bin/ksops
+              subPath: ksops
+            - name: sops-age
+              mountPath: /.config/sops/age
+              readOnly: true
+      volumes:
+        - name: custom-tools
+          emptyDir: {}
+        - name: sops-age
+          secret:
+            secretName: sops-age
+            defaultMode: 292

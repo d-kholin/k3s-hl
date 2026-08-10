@@ -1,0 +1,8 @@
+# KSOPS needs kustomize to run exec plugins; url shows up in UI links.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  kustomize.buildOptions: --enable-alpha-plugins --enable-exec
+  url: https://argocd-k3s.thegriffiths.ca

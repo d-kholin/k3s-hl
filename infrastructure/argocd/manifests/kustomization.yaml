@@ -1,0 +1,20 @@
+# Argo CD itself: upstream install.yaml (pinned) + KSOPS wiring.
+# Upgrade path: bump the ref below (read the release notes first).
+#
+# Also used for first-install bootstrap on a fresh cluster:
+#   kubectl apply -k infrastructure/argocd/manifests
+# (see docs/disaster-recovery.md)
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  - namespace.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.0/manifests/install.yaml
+
+patches:
+  - path: argocd-cm-patch.yaml
+  - path: argocd-cmd-params-cm-patch.yaml
+  - path: repo-server-ksops-patch.yaml

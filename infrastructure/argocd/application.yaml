@@ -1,0 +1,40 @@
+# Argo CD manages itself: stock v3.5.0 install.yaml + the KSOPS repo-server
+# patch and config that were previously hand-applied (and therefore invisible
+# to GitOps / lost on cluster rebuild). Bootstrap order for a fresh cluster
+# lives in docs/disaster-recovery.md.
+#
+# Deliberate differences from the other apps:
+# - NO resources-finalizer: cascade-deleting this app would delete Argo CD
+#   itself (including the sops-age secret's namespace).
+# - prune: false — a bad edit here must never make Argo CD prune its own
+#   controller. Upgrades may leave renamed leftovers to clean up manually.
+# - ServerSideApply: the Argo CD CRDs exceed the last-applied annotation limit.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: infrastructure/argocd/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

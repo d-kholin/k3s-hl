@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  annotations:
+    # Never cascade-delete: the namespace holds the sops-age secret (created
+    # manually from the offline age key) and Argo CD's own state.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
