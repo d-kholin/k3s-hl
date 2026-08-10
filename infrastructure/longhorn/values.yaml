@@ -24,12 +24,13 @@ defaultSettings:
   # detach and replacement pods on other nodes can attach (default: do-nothing).
   nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
 
-# S3-compatible backup target (self-hosted; bucket naku-longhorn must exist).
-# Region string is required by the URL format but ignored by most self-hosted
-# S3; trailing slash is mandatory. Credentials:
+# S3-compatible backup target (self-hosted Garage; bucket naku-longhorn must
+# exist). The @region token must match Garage's s3_region ("garage" by
+# default) — it goes into the AWS SigV4 signing scope. Trailing slash is
+# mandatory. Credentials:
 #   sops infrastructure/longhorn-config/manifests/backup-target-secret.sops.yaml
 defaultBackupStore:
-  backupTarget: s3://naku-longhorn@us-east-1/
+  backupTarget: s3://naku-longhorn@garage/
   backupTargetCredentialSecret: longhorn-backup-target
   pollInterval: 300
 
