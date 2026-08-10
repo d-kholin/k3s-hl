@@ -6,7 +6,8 @@ metadata:
   labels:
     app: actual-budget
 spec:
-  replicas: 1
+  # MIGRATION IN PROGRESS: scaled to 0 while data copies to the encrypted PVC.
+  replicas: 0
   # RWO volume — avoid multi-attach by never rolling two pods
   strategy:
     type: Recreate
