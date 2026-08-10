@@ -1,0 +1,9 @@
+# App-of-Apps: Argo CD Applications for cluster infrastructure.
+# Applied by bootstrap/root-app.yaml (path: infrastructure).
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - metallb/application.yaml
+  - longhorn/application.yaml

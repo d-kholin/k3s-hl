@@ -1,0 +1,24 @@
+# Longhorn Helm values.
+# Chart: https://charts.longhorn.io  longhorn 1.8.1
+#
+# Default StorageClass with 3 replicas. Data path: /var/lib/longhorn on each node.
+
+persistence:
+  defaultClass: true
+  defaultFsType: ext4
+  defaultClassReplicaCount: 3
+  reclaimPolicy: Delete
+  defaultDataLocality: disabled
+
+defaultSettings:
+  defaultReplicaCount: "3"
+  defaultDataPath: /var/lib/longhorn
+  # Allow scheduling on nodes that already have a replica (homelab-friendly)
+  replicaSoftAntiAffinity: "true"
+  storageMinimalAvailablePercentage: "10"
+  storageOverProvisioningPercentage: "100"
+
+# Keep UI ClusterIP; expose later via Ingress/MetalLB if desired.
+service:
+  ui:
+    type: ClusterIP

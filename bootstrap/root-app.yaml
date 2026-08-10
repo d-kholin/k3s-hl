@@ -1,20 +1,21 @@
-# App-of-Apps starter for Argo CD.
-# Point this Application at this repo after bootstrap; adjust repoURL / path as needed.
-# Does not point at any external application repositories.
+# Root App-of-Apps for Argo CD.
+# Apply once after Argo CD is up:
+#   kubectl apply -f bootstrap/root-app.yaml
+# It watches this repo and creates child Applications under infrastructure/.
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: root
   namespace: argocd
-  # finalizer: resources-finalizer.argocd.argoproj.io
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    # TODO: set to this repository's URL
-    repoURL: https://github.com/EXAMPLE/k3s-hl.git
+    repoURL: https://github.com/d-kholin/k3s-hl.git
     targetRevision: HEAD
-    path: apps
+    path: infrastructure
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
