@@ -1,0 +1,102 @@
+# Newt tunnel — site B. Second Pangolin site for a redundant connection;
+# identical to site A apart from its credentials (Secret newt-site-b-auth).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newt-site-b
+  namespace: newt
+  labels:
+    app: newt-site-b
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: newt-site-b
+  template:
+    metadata:
+      labels:
+        app: newt-site-b
+        app.kubernetes.io/part-of: newt
+    spec:
+      automountServiceAccountToken: false
+      # Spread the two tunnel sites across nodes so one node loss doesn't
+      # take down both connections.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/part-of: newt
+      # Pangolin server is reached via its LAN address, not the public DNS.
+      hostAliases:
+        - ip: 172.20.0.7
+          hostnames:
+            - proxy.thegriffiths.ca
+      containers:
+        - name: newt
+          image: docker.io/fosrl/newt:1.15.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PANGOLIN_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: newt-site-b-auth
+                  key: PANGOLIN_ENDPOINT
+            - name: NEWT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: newt-site-b-auth
+                  key: NEWT_ID
+            - name: NEWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: newt-site-b-auth
+                  key: NEWT_SECRET
+            - name: LOG_LEVEL
+              value: INFO
+            - name: ACCEPT_CLIENTS
+              value: "true"
+            - name: HOME
+              value: /tmp
+            - name: XDG_CONFIG_HOME
+              value: /tmp/.config
+          ports:
+            - name: wg
+              containerPort: 51820
+              protocol: UDP
+            - name: tester
+              containerPort: 51821
+              protocol: UDP
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: tun
+              mountPath: /dev/net/tun
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice

@@ -1,0 +1,26 @@
+# Argo CD Application for Newt (Pangolin tunnel client).
+# Two independent sites for a redundant connection to the Pangolin server.
+# Workload path: apps/newt/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: newt
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/newt/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: newt
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

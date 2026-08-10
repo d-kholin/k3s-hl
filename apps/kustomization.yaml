@@ -6,4 +6,5 @@ kind: Kustomization
 
 resources:
   - actual-budget/application.yaml
+  - newt/application.yaml
   - vaultwarden/application.yaml

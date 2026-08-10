@@ -1,0 +1,18 @@
+# WireGuard endpoint for site B (Olm clients / ACCEPT_CLIENTS).
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: newt-site-b
+  namespace: newt
+  labels:
+    app: newt-site-b
+spec:
+  type: ClusterIP
+  selector:
+    app: newt-site-b
+  ports:
+    - name: wg
+      port: 51820
+      targetPort: wg
+      protocol: UDP

@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: newt
+
+resources:
+  - deployment-site-a.yaml
+  - deployment-site-b.yaml
+  - service-site-a.yaml
+  - service-site-b.yaml
+
+generators:
+  - ksops-generator.yaml
+
+commonLabels:
+  app.kubernetes.io/name: newt
