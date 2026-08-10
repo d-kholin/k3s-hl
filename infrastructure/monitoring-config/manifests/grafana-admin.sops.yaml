@@ -1,0 +1,47 @@
+# Grafana admin credentials (referenced by grafana.admin.existingSecret in
+# infrastructure/monitoring/values.yaml). Without a fixed secret the chart
+# regenerates a random password every render and Argo shows permanent drift.
+# Read the password with:
+#   sops -d --extract '["stringData"]["admin-password"]' infrastructure/monitoring-config/manifests/grafana-admin.sops.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+    name: grafana-admin
+    namespace: monitoring
+type: Opaque
+stringData:
+    admin-user: ENC[AES256_GCM,data:nbamqFU=,iv:QyJakeXNZ5ON9+WIdCWWqt795uyQAxNML4OM2tDvHn0=,tag:1rNCH95v2bg1TMUWf1kqXA==,type:str]
+    admin-password: ENC[AES256_GCM,data:JdZSfJXQbFnjWOBGU1EMRBaypyUgapeUF8I0GA==,iv:jMV4GGHsFZb9T37cd1MAy5J+5CQpMRr9oBJ/TzptmLU=,tag:OlmVkFbASZaQYmDrzihxUQ==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBJMTFwRjg4aFJMQnR2OUNh
+            Qm5nNmhtc1I1cGxxNnhaclFWbWZMendIMG1VCmpFbG1YYUtpbTdPTjEvbW4xTGh6
+            YXN1STF1dE5YZ0JtZEQvWkw2VGkxZnMKLS0tIFBHemtLbVNnVkZHV21oMEdjb0xZ
+            OW9qV3pCcmoxYXA2ODF2ZWdna1N1R3MKWZcxR8sY0EACprPZsMzLfSUhMk3df+UF
+            APtpDHOqZJGCaJZPTXoZFw7v40pIIWkwNgYFcOO0/MygHaH/GwHwrQ==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1u897l89mkwn8jpwckjaln0fw50thp7mfs2c78cx0aw48slfyu5nsvvt4ft
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBia0JaZ1FhVGVWMmRtZUha
+            OHJMK0FRNm9hRHc1bGZwSExBWGgvM2d4R3pvCjhYR3hOZEFmeGdNcVg2ZFo3Y1Vw
+            SXVsNlRlYkxMT1lRczYvVWJjME9scEUKLS0tICs0S0Joa2IwbEVmeE5Sb2FFMGY3
+            UVA3ZitSVExNaHZkKzhSR2hBd1V6UjgKlrslmMbfNt8CAXTEAmFk5kvngmJA2Me0
+            e95B/96lSICh6767UfN3ZHXj9sU7VS3UmOs155rFncEW8yO7bJmacA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1gn97pnarxh3wkdv2l8ynk6s7ted0u5hgudhxyfec2djwy3dsapsss2ak8p
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBMSXd5VUduZ1d4QmZqNFhC
+            YXg4cjE1VkQxeWx6VHlXOVJnbHpEdE5ZSFZBCkcwVXBsTUFMUjZKV29kbDVzeTV5
+            bGtkbXQrYlQ2ZEN1OWVMZEpQZHBPbUUKLS0tIFkxenp3Ry9GVFJ2ZjgxRnphcUNa
+            MDRoMEcxVkpneFBLREVWaUdlemIyZjQK0AbL6qZaorMntS0PDOa6AwfdXhsEzbMF
+            iVGoCRjj51fo+IQAnEcw2syrzqVxh9771k83v6FzR+qd2IgsF02Qgw==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1epz74rx38txrvhxxp4lq43lca6kg2yg0a5ay3pkhshfwgwx2dexsvj9vvz
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-10T21:56:47Z"
+    mac: ENC[AES256_GCM,data:qYvUNTEoatQA6Xib86U1pq88XxdCzdEohqWknkJx55SPETVCavncoJigiIqJ3HBCAppfAKUWSfqOh+WsKzf5ImjX3W+A220c5qQCZMn9FSILbAjgvARewqQexi2EdxCL3HFJ1J0z6degtaVu0A0uAT7UwTQ/g04t+m5BB9wF7hA=,iv:QURpXGAUbeLtwVDux3GFxSmd91dl/h/oRzs2yiO14To=,tag:6bu6bKcc2fL0bvEeRqVtIg==,type:str]
+    version: 3.13.3

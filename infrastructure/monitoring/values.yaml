@@ -63,6 +63,12 @@ alertmanager:
 
 # Grafana stays ClusterIP; reach it with:
 #   kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80
-# Default login admin / prom-operator — change it on first login.
+# Admin credentials come from the SOPS grafana-admin secret (monitoring-config)
+# — a fixed secret, or the chart regenerates a random password every render
+# and Argo reports permanent drift.
 grafana:
   enabled: true
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password

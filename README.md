@@ -152,7 +152,7 @@ live encrypted in git — fill them in with:
 sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml
 
 # UIs (ClusterIP only):
-kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80        # admin / prom-operator — change it
+kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80        # user admin; password: sops -d --extract '["stringData"]["admin-password"]' infrastructure/monitoring-config/manifests/grafana-admin.sops.yaml
 kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-alertmanager 9093:9093
 ```
 
@@ -204,7 +204,6 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 - [ ] **Alertmanager SMTP**: fill real credentials + destination address:
   `sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml`
   (placeholders until then — no emails will send).
-- [ ] **Grafana**: change the default admin password (`prom-operator`) on first login.
 - [ ] **Test-restore a backup quarterly** — see docs/disaster-recovery.md "Ongoing hygiene".
 - [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget, Vaultwarden).
 - [ ] Chart pins today: Longhorn `1.12.0`, kube-prometheus-stack `88.2.0`, Argo CD `v3.5.0` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.
