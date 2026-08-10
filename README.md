@@ -27,6 +27,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 |-----------|---------|--------|
 | **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
 | **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily S3 backups |
+| **coredns-custom** | Cluster DNS overrides | Pins `garage.nakunga.com` (S3 backup target, Tailscale-only) for pods |
 
 ### Volume encryption & backups
 
@@ -34,9 +35,11 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
   encrypted with the passphrase in `longhorn-config/manifests/crypto-secret.sops.yaml`
   (SOPS/age, decrypted in-cluster by KSOPS). Backups of encrypted volumes stay
   encrypted — the S3 target never sees plaintext. `reclaimPolicy: Retain`.
-- **Backup target**: self-hosted S3 (MinIO/Garage/TrueNAS), configured in
-  `infrastructure/longhorn/values.yaml` (`defaultBackupStore`) with credentials
-  in `longhorn-config/manifests/backup-target-secret.sops.yaml`.
+- **Backup target**: self-hosted Garage S3 (`garage.nakunga.com`, Tailscale-only),
+  configured in `infrastructure/longhorn/values.yaml` (`defaultBackupStore`) with
+  credentials in `longhorn-config/manifests/backup-target-secret.sops.yaml`.
+  Nodes are joined to the tailnet (`tailscale up --accept-dns=false`); pod DNS
+  for the hostname comes from the `coredns-custom` app.
 - **Schedule**: `RecurringJob` `backup-daily` — 03:00 daily, retain 7, applies
   to all volumes (group `default`).
 - **Disaster recovery**: restoring backups needs the crypto passphrase → which

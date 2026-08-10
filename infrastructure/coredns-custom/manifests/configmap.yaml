@@ -1,0 +1,21 @@
+# k3s CoreDNS drop-in (imported as /etc/coredns/custom/*.server).
+#
+# garage.nakunga.com is the Longhorn S3 backup target (Garage). It only
+# resolves via Tailscale MagicDNS, which CoreDNS doesn't consult — pin its
+# tailnet IP here. The nodes themselves are joined to the tailnet
+# (tailscale up --accept-dns=false), which provides the network path.
+#
+# CoreDNS may need a restart to pick up changes:
+#   kubectl -n kube-system rollout restart deploy/coredns
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  garage.server: |
+    garage.nakunga.com:53 {
+        hosts {
+            100.108.218.58 garage.nakunga.com
+        }
+    }

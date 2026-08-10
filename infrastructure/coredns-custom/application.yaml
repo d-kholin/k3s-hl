@@ -1,0 +1,24 @@
+# Custom CoreDNS config for k3s (coredns-custom ConfigMap).
+# k3s's Corefile imports /etc/coredns/custom/*.server, letting us add DNS
+# entries for names the LAN/upstream DNS doesn't know (Tailscale-only hosts).
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: coredns-custom
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: infrastructure/coredns-custom/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
