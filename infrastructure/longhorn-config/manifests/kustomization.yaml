@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# No namespace: field — StorageClass is cluster-scoped; namespaced resources
+# set metadata.namespace explicitly.
+
+resources:
+  - storageclass.yaml
+  - recurringjob.yaml
+
+generators:
+  - ksops-generator.yaml

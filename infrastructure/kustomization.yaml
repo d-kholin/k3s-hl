@@ -6,3 +6,4 @@ kind: Kustomization
 
 resources:
   - longhorn/application.yaml
+  - longhorn-config/application.yaml

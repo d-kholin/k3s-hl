@@ -1,0 +1,36 @@
+# Longhorn cluster config that can't live in the Helm values:
+# encrypted StorageClass + crypto secret, S3 backup credentials, recurring backup job.
+#
+# Depends on Longhorn (wave 1) for the RecurringJob CRD — wave 2 +
+# SkipDryRunOnMissingResource + retry cover first sync on a fresh cluster.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: infrastructure/longhorn-config/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

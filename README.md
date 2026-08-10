@@ -12,8 +12,10 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 ├── .sops.yaml
 ├── bootstrap/
 │   └── root-app.yaml          # App-of-Apps root (infrastructure/ + apps/)
+├── docs/                      # Runbooks (encrypted-volume migration)
 ├── infrastructure/
-│   └── longhorn/              # Longhorn Helm (default StorageClass)
+│   ├── longhorn/              # Longhorn Helm
+│   └── longhorn-config/       # Encrypted StorageClass, S3 backup target, RecurringJob
 └── apps/
     ├── actual-budget/         # Actual Budget (personal finance)
     └── vaultwarden/           # Vaultwarden (password manager; SOPS secret)
@@ -23,7 +25,27 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 
 | Component | Purpose | Notes |
 |-----------|---------|--------|
-| **Longhorn** | Distributed block storage | Default StorageClass, **3 replicas**, data path `/var/lib/longhorn` |
+| **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
+| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily S3 backups |
+
+### Volume encryption & backups
+
+- **`longhorn-encrypted`** is the default StorageClass: volumes are dm-crypt
+  encrypted with the passphrase in `longhorn-config/manifests/crypto-secret.sops.yaml`
+  (SOPS/age, decrypted in-cluster by KSOPS). Backups of encrypted volumes stay
+  encrypted — the S3 target never sees plaintext. `reclaimPolicy: Retain`.
+- **Backup target**: self-hosted S3 (MinIO/Garage/TrueNAS), configured in
+  `infrastructure/longhorn/values.yaml` (`defaultBackupStore`) with credentials
+  in `longhorn-config/manifests/backup-target-secret.sops.yaml`.
+- **Schedule**: `RecurringJob` `backup-daily` — 03:00 daily, retain 7, applies
+  to all volumes (group `default`).
+- **Disaster recovery**: restoring backups needs the crypto passphrase → which
+  needs an age private key from `.sops.yaml`. Keep an **offline copy of your
+  personal age key**.
+- Migrating pre-existing unencrypted PVCs: see
+  [docs/encrypted-volume-migration.md](docs/encrypted-volume-migration.md).
+- App PVCs carry `argocd.argoproj.io/sync-options: Prune=false,Delete=false` so
+  Argo never deletes data volumes on prune/app-deletion.
 
 ## Apps
 
@@ -71,6 +93,11 @@ kubectl -n vaultwarden port-forward svc/vaultwarden 8080:80
 # Debian/Ubuntu example
 sudo apt-get install -y open-iscsi nfs-common
 sudo systemctl enable --now iscsid
+
+# Volume encryption (longhorn-encrypted StorageClass) additionally needs
+# cryptsetup + the dm_crypt kernel module on every node:
+sudo apt-get install -y cryptsetup
+sudo modprobe dm_crypt   # usually built-in/autoloaded; verify with: lsmod | grep dm_crypt
 ```
 
 Ensure enough disk under `/var/lib/longhorn` (or change `defaultDataPath` in `infrastructure/longhorn/values.yaml`).
@@ -135,4 +162,7 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 - [ ] **SOPS in Argo**: KSOPS plugin + `sops-age` secret in `argocd` — required for Vaultwarden `secret.sops.yaml`.
 - [x] **Vaultwarden secret**: `ADMIN_TOKEN` encrypted in `secret.sops.yaml` (still needs KSOPS + `sops-age` in Argo).
 - [ ] Chart pins today: Longhorn `1.8.1` — bump `targetRevision` in the Application manifest when you want upgrades.
+- [ ] **Backup target**: set real bucket in `infrastructure/longhorn/values.yaml` (`defaultBackupStore.backupTarget`) and fill credentials: `sops infrastructure/longhorn-config/manifests/backup-target-secret.sops.yaml`.
+- [ ] **Migrate volumes to `longhorn-encrypted`** before the first 3 AM backup runs (plaintext backups otherwise) — see `docs/encrypted-volume-migration.md`.
+- [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups.
 

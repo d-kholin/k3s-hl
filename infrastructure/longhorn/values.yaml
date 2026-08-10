@@ -3,8 +3,11 @@
 #
 # Default StorageClass with 3 replicas. Data path: /var/lib/longhorn on each node.
 
+# Chart's plain "longhorn" class is NOT default — longhorn-encrypted
+# (infrastructure/longhorn-config) is the cluster default so new PVCs are
+# encrypted at rest and in backups.
 persistence:
-  defaultClass: true
+  defaultClass: false
   defaultFsType: ext4
   defaultClassReplicaCount: 3
   reclaimPolicy: Delete
@@ -20,6 +23,15 @@ defaultSettings:
   # On node death, force-delete pods using Longhorn volumes so RWO volumes can
   # detach and replacement pods on other nodes can attach (default: do-nothing).
   nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+
+# S3-compatible backup target (self-hosted; bucket naku-longhorn must exist).
+# Region string is required by the URL format but ignored by most self-hosted
+# S3; trailing slash is mandatory. Credentials:
+#   sops infrastructure/longhorn-config/manifests/backup-target-secret.sops.yaml
+defaultBackupStore:
+  backupTarget: s3://naku-longhorn@us-east-1/
+  backupTargetCredentialSecret: longhorn-backup-target
+  pollInterval: 300
 
 # Keep UI ClusterIP; expose later via Pangolin/Newt or Ingress if desired.
 service:
