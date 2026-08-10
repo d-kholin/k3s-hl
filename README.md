@@ -15,8 +15,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 ├── infrastructure/
 │   └── longhorn/              # Longhorn Helm (default StorageClass)
 └── apps/
-    ├── actual-budget/         # Actual Budget (personal finance)
-    └── example-app/           # Scaffold only
+    └── actual-budget/         # Actual Budget (personal finance)
 ```
 
 ## Infrastructure
@@ -107,6 +106,3 @@ sops path/to/file.sops.yaml
 - [ ] **SOPS in Argo**: KSOPS plugin + `sops-age` secret in `argocd` when you start using encrypted secrets for real apps.
 - [ ] Chart pins today: Longhorn `1.8.1` — bump `targetRevision` in the Application manifest when you want upgrades.
 
-## Example app
-
-`apps/example-app/` is a minimal nginx Deployment + Service with a KSOPS-backed Secret. Scaffolding only — not wired into the root app.
