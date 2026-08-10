@@ -39,7 +39,7 @@ jobs:
               echo "::error file=$f::$f is not SOPS-encrypted"
               fail=1
             fi
-          done < <(find . -name '*.sops.yaml' -not -path './.git/*')
+          done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml' -not -path './.git/*')
           exit $fail
 
       - name: kustomize build + kubeconform

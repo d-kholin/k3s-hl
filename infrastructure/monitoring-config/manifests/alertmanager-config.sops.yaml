@@ -1,0 +1,51 @@
+# Alertmanager configuration (mounted by the operator via
+# alertmanager.alertmanagerSpec.configSecret in infrastructure/monitoring/values.yaml).
+#
+# Holds SMTP host/credentials and the destination address — encrypted because
+# this repo is public. Fill in real values with:
+#   sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml
+#
+# smtp_smarthost   e.g. smtp.gmail.com:587 (Gmail needs an app password)
+# smtp_from        the sending address
+# to               where alert emails land
+apiVersion: v1
+kind: Secret
+metadata:
+    name: alertmanager-config
+    namespace: monitoring
+type: Opaque
+stringData:
+    alertmanager.yaml: ENC[AES256_GCM,data:wCkNVQH+glHEtuzfi/9P8NAPXu3lkD/FdkgiLp2xH43JouhIhA6ZGWtmCyJXWdITL6/1jV+kt+AFJordglKYjv9Zkpa5HqoYPce4ow2FjZkTuYRkS+OOnOcAoPSETZ0T5QoduGkRh4UZRDtqajmldf/5Ni4xMJbjrmmgCVRaSNaduP0XZaVWilUgs1Tx3maENMrZNj2YSLzRbPmgSbrH+wSblyFg+vSXDEBxhDiBkjRQOJ64MQg5k0MbEw2+L+jOgmzcx1DgJzbF8cqgh4aGwp8EIhlrgwbgm3e/nTceUMx3OiH4qFgmAv9qhM3wLUwlg4P9Y2CPMR//6255Ew6aeAfQGN5ryEFiArY1YBy2evwgm3KUVqazRpBL+DEGSsghZxy59GKfAgfPGsCwkuon8bPlMFOiD3fFDYMoZkaw3iXXDQPISWBd+dZxxcGk7AcEnjQfCPj4vjrDANrDhCPro96r851YjO/mp6qOnG+IbSdEVL9IhgvLbttEwrKp1Kk2yT4iIBhSNBLCeqCm/tKQupb0JPzKAzpIwIVGucn5YXub7rmBVVVVlwbWMVn/IIRziqGYqxEHeHHoqIGo0x4voNLsWLMg1L9kB97aXFA//MmNIxCuaidNilH9vlPcTFrKKwqiyArU6MRpsA2cMj7IB/oYgb2hsbx7UM2eDu89v76OLLDwp0/u55O86OPEOnOnINg0iSQS02Ef7/7bbpqSJJ0kNhlFkoeM+10Ry3FWiBWvzebflAA52dXpSN73QPmV5a/T08mp3GKF7r4yF1dehKTRIM7sygIA8sECIgMsz777HJWRIr+jt2sxO4NrFHd5BzcJDcuxG5eL1EzioEDhTqFgVcBJBIxXyczGnPCFFVtZ+TFGRt2yTw6RY9G/NCXgxH5z0+l+zehTEh6GN6g=,iv:l+uVg95bRVPTfVugtwKXByycBPhutnY3butF3bXPmk8=,tag:dSt9STmxXUs+Yo+xCcaE1Q==,type:str]
+sops:
+    age:
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBuZmFVMUxDRzFtRWg2Zkto
+            L1NxS0I1bUgyeWxMWjAxZ2RKUmNiUWNPM1Q4ClIzb1hCb3VFb2k3bTUwNVJSZnFR
+            SnJqQWo4MlhEa3o0WnBreitLMnROemsKLS0tIFh0S2pjcXNrKzMrTXVUUXlqeExG
+            bnFsSnl5M0ttdS9qcnpJQlArRXhMdm8Kh3nRgz/9JvZJ+bP7RUCmxhiTCnat1TyD
+            d+/3TYG4Q5RJT+xr+NWgzi6vgj9rMOCaR5vX3mVYZRRNKbczLidcpg==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1u897l89mkwn8jpwckjaln0fw50thp7mfs2c78cx0aw48slfyu5nsvvt4ft
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBDWVZ5OSsrc05lS1hHalpY
+            WnBVTnFHYzJkTUpUYUdHNC9NTnpvQUpaR2cwCnRyRG00aWFrNHRpVmkvRFozWW9S
+            RFQ4M1Fwd21sU0lVQU0xMkhKdXk4Y3cKLS0tIGdWeUEyUVJSSVZqcXpQd2R1M2Rh
+            SExIRWpnZ3luUUk0cU55QVRYM25ncTgKb+HkatoumajbVJ0/1ZXQIF4cGXNq52DQ
+            v8gRR0FEdSWm9odxOUUyv4DUJHKy55JOGI4TcEZpOcZDElsahh42zA==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1gn97pnarxh3wkdv2l8ynk6s7ted0u5hgudhxyfec2djwy3dsapsss2ak8p
+        - enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBkQ2NqY1dzaDlpdjJheVoz
+            TDk3WWlhZ09aSEJ0ckptUXkwelNneSt1MnpBCm9sT2xXYSsxcG5VZXByUUpBN3No
+            dTJtdGRKcXR4akxFSjJvbUNhdkF3eVUKLS0tIFVtdS8zVnQ2RmNrUVBlZHE4WjQv
+            bmtUQVVDV0lZRDQybVdxcUJ2NGgra2cKGQluL4NyHEIjklFZAIrgTPcaJI4zDRXt
+            6yiy7WWTrppWdtmgw9sr70Ul3RmdTD7tXMv9z+o6R2Uf8H1kOjQ78g==
+            -----END AGE ENCRYPTED FILE-----
+          recipient: age1epz74rx38txrvhxxp4lq43lca6kg2yg0a5ay3pkhshfwgwx2dexsvj9vvz
+    encrypted_regex: ^(data|stringData)$
+    lastmodified: "2026-08-10T21:46:44Z"
+    mac: ENC[AES256_GCM,data:59BcWY8SxX2SsSH/RKoU5xb5NTBVoys7wxOGxs7TcGGTiXYktib+xQ918dPSxnX8yboFksw8rn/PfkxNDUtBhWDZGbRblLccewVBeEOvoN8Za8J22Fa0nFgsfsaO5crcbobn6iNK37ijrb9jT/sj9/KsCoLYot9m0cAg5ZhVkr4=,iv:kik5E7cUn7C9mhOnyLEfIUmumwLZGM983AG/M/Nl5f8=,tag:knG/cSNIM0fiR7Macu08lQ==,type:str]
+    version: 3.13.3

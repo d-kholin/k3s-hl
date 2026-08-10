@@ -8,3 +8,5 @@ resources:
   - longhorn/application.yaml
   - longhorn-config/application.yaml
   - coredns-custom/application.yaml
+  - monitoring/application.yaml
+  - monitoring-config/application.yaml

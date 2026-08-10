@@ -1,0 +1,11 @@
+# KSOPS generator: decrypts *.sops.yaml secrets at kustomize build time (Argo CD).
+apiVersion: viaduct.ai/v1
+kind: ksops
+metadata:
+  name: monitoring-config-secrets
+  annotations:
+    config.kubernetes.io/function: |
+      exec:
+        path: ksops
+files:
+  - ./alertmanager-config.sops.yaml

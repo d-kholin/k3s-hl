@@ -1,0 +1,37 @@
+# Monitoring config that can't live in the chart values: Alertmanager
+# SMTP/email config (SOPS), Longhorn scrape target, Longhorn alert rules.
+#
+# Depends on kube-prometheus-stack (wave 1) for the ServiceMonitor +
+# PrometheusRule CRDs — wave 2 + SkipDryRunOnMissingResource + retry cover
+# first sync on a fresh cluster.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: infrastructure/monitoring-config/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
