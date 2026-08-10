@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "America/Edmonton",
+  "kubernetes": {
+    "managerFilePatterns": ["/(^|/)manifests/.+\\.ya?ml$/"]
+  },
+  "argocd": {
+    "managerFilePatterns": ["/(^|/)application\\.ya?ml$/"]
+  },
+  "packageRules": [
+    {
+      "description": "Longhorn supports upgrading one minor at a time only — open a PR per minor step",
+      "matchDatasources": ["helm"],
+      "matchPackageNames": ["longhorn"],
+      "separateMultipleMinor": true
+    }
+  ]
+}
