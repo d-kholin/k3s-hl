@@ -10,14 +10,19 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 ```
 .
 ├── .sops.yaml
+├── .github/workflows/         # CI: kustomize build + kubeconform + sops guard
 ├── bootstrap/
 │   └── root-app.yaml          # App-of-Apps root (infrastructure/ + apps/)
-├── docs/                      # Runbooks (encrypted-volume migration)
+├── docs/                      # Runbooks (disaster recovery, encrypted-volume migration)
 ├── infrastructure/
+│   ├── argocd/                # Argo CD manages itself (install.yaml + KSOPS patch)
 │   ├── longhorn/              # Longhorn Helm
-│   └── longhorn-config/       # Encrypted StorageClass, S3 backup target, RecurringJob
+│   ├── longhorn-config/       # Encrypted StorageClass, S3 backup target, RecurringJobs
+│   ├── monitoring/            # kube-prometheus-stack Helm
+│   └── monitoring-config/     # Alertmanager email (SOPS), Longhorn alerts
 └── apps/
     ├── actual-budget/         # Actual Budget (personal finance)
+    ├── newt/                  # Pangolin tunnel client (two redundant sites)
     └── vaultwarden/           # Vaultwarden (password manager; SOPS secret)
 ```
 
@@ -25,8 +30,11 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 
 | Component | Purpose | Notes |
 |-----------|---------|--------|
+| **argocd** | Argo CD manages itself | Stock `install.yaml` v3.5.0 + KSOPS repo-server patch; bootstrap via `kubectl apply -k` |
 | **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
-| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily S3 backups |
+| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), snapshot + tiered S3 backups |
+| **monitoring** | kube-prometheus-stack | Prometheus (14d), Alertmanager → email, Grafana (ClusterIP) |
+| **monitoring-config** | Alerting config | Alertmanager SMTP/email (SOPS), Longhorn scrape + alert rules |
 | **coredns-custom** | Cluster DNS overrides | Pins `garage.nakunga.com` (S3 backup target, Tailscale-only) for pods |
 
 ### Volume encryption & backups
@@ -40,11 +48,14 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
   credentials in `longhorn-config/manifests/backup-target-secret.sops.yaml`.
   Nodes are joined to the tailnet (`tailscale up --accept-dns=false`); pod DNS
   for the hostname comes from the `coredns-custom` app.
-- **Schedule**: `RecurringJob` `backup-daily` — 03:00 daily, retain 7, applies
-  to all volumes (group `default`).
-- **Disaster recovery**: restoring backups needs the crypto passphrase → which
-  needs an age private key from `.sops.yaml`. Keep an **offline copy of your
-  personal age key**.
+- **Schedule** (all volumes, group `default`): local snapshots every 6h
+  (retain 8) for fast rollback, plus tiered S3 backups — daily 03:00
+  (retain 7), Saturday 04:30 (retain 5), monthly (retain 6) → recovery
+  points span ~6 months.
+- **Disaster recovery**: full cluster-rebuild runbook in
+  [docs/disaster-recovery.md](docs/disaster-recovery.md). Restoring backups
+  needs the crypto passphrase → which needs an age private key from
+  `.sops.yaml`. Keep an **offline copy of your personal age key**.
 - Migrating pre-existing unencrypted PVCs: see
   [docs/encrypted-volume-migration.md](docs/encrypted-volume-migration.md).
 - App PVCs carry `argocd.argoproj.io/sync-options: Prune=false,Delete=false` so
@@ -55,7 +66,15 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 | App | Purpose | Access |
 |-----|---------|--------|
 | **actual-budget** | [Actual Budget](https://actualbudget.org) sync server + web UI | ClusterIP `:5006` — expose with Pangolin/Newt |
-| **vaultwarden** | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (Bitwarden-compatible) | ClusterIP `:80` — expose with Pangolin/Newt; admin at `/admin` |
+| **vaultwarden** | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (Bitwarden-compatible) | ClusterIP `:80` (container listens on 8080) — expose with Pangolin/Newt; admin at `/admin` |
+| **newt** | [Newt](https://github.com/fosrl/newt) Pangolin tunnel client | Two sites (redundant), spread across nodes |
+
+Workload security: app namespaces enforce the **restricted** Pod Security
+Standard (pods run non-root, all capabilities dropped, read-only rootfs,
+seccomp); `newt` is **privileged** (needs root + NET_ADMIN + /dev/net/tun).
+Default-deny ingress NetworkPolicies mean **only Newt pods** can reach the
+apps — in-cluster smoke tests from other namespaces will (correctly) time
+out; use `kubectl port-forward` instead.
 
 ### Actual Budget
 
@@ -105,13 +124,37 @@ sudo modprobe dm_crypt   # usually built-in/autoloaded; verify with: lsmod | gre
 
 Ensure enough disk under `/var/lib/longhorn` (or change `defaultDataPath` in `infrastructure/longhorn/values.yaml`).
 
-### Bootstrap Argo CD apps
+### Bootstrap (fresh cluster)
 
 ```bash
+# 1. Argo CD + KSOPS (same kustomization Argo later manages itself with)
+kubectl apply -k infrastructure/argocd/manifests
+
+# 2. The one manual secret — age private key from your offline copy
+kubectl -n argocd create secret generic sops-age \
+  --from-file=keys.txt=/path/to/offline/age-key.txt
+
+# 3. Everything else
 kubectl apply -f bootstrap/root-app.yaml
 ```
 
 Root Application sources: `https://github.com/d-kholin/k3s-hl.git` → paths `infrastructure` and `apps`.
+Rebuilding with data restore: follow [docs/disaster-recovery.md](docs/disaster-recovery.md) instead.
+
+### Monitoring & email alerts
+
+kube-prometheus-stack with Longhorn rules: volume degraded/faulted, backup
+older than 26h, volume never backed up, Longhorn node unready, disk >85%.
+Alertmanager emails them; SMTP host/credentials and the destination address
+live encrypted in git — fill them in with:
+
+```bash
+sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml
+
+# UIs (ClusterIP only):
+kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80        # admin / prom-operator — change it
+kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-alertmanager 9093:9093
+```
 
 ### Verify
 
@@ -119,7 +162,7 @@ Root Application sources: `https://github.com/d-kholin/k3s-hl.git` → paths `in
 # Longhorn
 kubectl -n longhorn-system get pods
 kubectl get storageclass
-# expect longhorn (default)
+# expect longhorn-encrypted (default)
 
 # Apps
 kubectl -n argocd get applications
@@ -158,14 +201,18 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 
 ## Open items / reminders
 
-- [x] **Argo CD ↔ git access**: apps use public HTTPS `https://github.com/d-kholin/k3s-hl.git` (no credentials required).
-- [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
+- [ ] **Alertmanager SMTP**: fill real credentials + destination address:
+  `sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml`
+  (placeholders until then — no emails will send).
+- [ ] **Grafana**: change the default admin password (`prom-operator`) on first login.
+- [ ] **Test-restore a backup quarterly** — see docs/disaster-recovery.md "Ongoing hygiene".
 - [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget, Vaultwarden).
-- [ ] **Longhorn node readiness**: open-iscsi on all storage nodes before expecting volumes to schedule.
-- [ ] **SOPS in Argo**: KSOPS plugin + `sops-age` secret in `argocd` — required for Vaultwarden `secret.sops.yaml`.
-- [x] **Vaultwarden secret**: `ADMIN_TOKEN` encrypted in `secret.sops.yaml` (still needs KSOPS + `sops-age` in Argo).
-- [ ] Chart pins today: Longhorn `1.12.0` — bump `targetRevision` in the Application manifest when you want upgrades (one minor version at a time; check that release's Important Notes first).
-- [ ] **Backup target**: set real bucket in `infrastructure/longhorn/values.yaml` (`defaultBackupStore.backupTarget`) and fill credentials: `sops infrastructure/longhorn-config/manifests/backup-target-secret.sops.yaml`.
-- [ ] **Migrate volumes to `longhorn-encrypted`** before the first 3 AM backup runs (plaintext backups otherwise) — see `docs/encrypted-volume-migration.md`.
-- [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups.
+- [ ] Chart pins today: Longhorn `1.12.0`, kube-prometheus-stack `88.2.0`, Argo CD `v3.5.0` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.
+- [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups AND all SOPS secrets. Verify you can locate it.
+- [ ] The `hostAliases` IP `172.20.0.7` (Pangolin LAN address) is hardcoded in both Newt deployments — update there if the Pangolin server moves.
+- [x] **Argo CD ↔ git access**: public HTTPS, no credentials required.
+- [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
+- [x] **SOPS in Argo**: KSOPS plugin + `sops-age` secret — now GitOps-managed (`infrastructure/argocd`); `sops-age` itself stays manual by design.
+- [x] **Backup target**: Garage bucket + credentials configured; daily/weekly/monthly backups + 6h snapshots scheduled.
+- [x] **Volumes on `longhorn-encrypted`** — apps use encrypted PVCs.
 
