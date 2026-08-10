@@ -23,6 +23,9 @@ defaultRules:
 
 prometheus:
   prometheusSpec:
+    # Alert emails' per-alert "Source" links point here (expose via Pangolin
+    # with auth, or leave unexposed — the name is right either way).
+    externalUrl: https://prometheus-k3s.thegriffiths.ca
     retention: 14d
     # Pick up ServiceMonitors/PodMonitors/PrometheusRules from any namespace
     # regardless of Helm-release labels (the Longhorn ones live in the
@@ -47,6 +50,10 @@ prometheus:
 
 alertmanager:
   alertmanagerSpec:
+    # Public URL used in email links ("View in Alertmanager") — served by a
+    # Pangolin resource pointing at the alertmanager Service (keep Pangolin
+    # auth ON: Alertmanager itself is unauthenticated and can silence alerts).
+    externalUrl: https://alertmanager-k3s.thegriffiths.ca
     # Full Alertmanager config (SMTP host/credentials, email receiver) comes
     # from the SOPS-encrypted secret in monitoring-config — not chart values —
     # because this repo is public. Edit with:
