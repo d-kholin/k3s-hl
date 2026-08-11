@@ -52,7 +52,7 @@ spec:
               value: "8080"
             # Public URL — emailed links (invites, verification) are built from this.
             - name: DOMAIN
-              value: "https://vaultwarden.k3s.thegriffiths.ca"
+              value: "https://pass.k3s.thegriffiths.ca"
             # SMTP for invites, email verification, and 2FA email. Host, from
             # address, and credentials live in the SOPS-encrypted vaultwarden-secrets.
             - name: SMTP_HOST
