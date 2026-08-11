@@ -50,6 +50,38 @@ spec:
             # Non-root can't bind :80 — listen on 8080 (Service still exposes 80).
             - name: ROCKET_PORT
               value: "8080"
+            # Public URL — emailed links (invites, verification) are built from this.
+            - name: DOMAIN
+              value: "https://vaultwarden.k3s.thegriffiths.ca"
+            # SMTP for invites, email verification, and 2FA email. Host, from
+            # address, and credentials live in the SOPS-encrypted vaultwarden-secrets.
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secrets
+                  key: SMTP_HOST
+            - name: SMTP_PORT
+              value: "587"
+            # starttls for port 587; use "force_tls" with port 465.
+            - name: SMTP_SECURITY
+              value: "starttls"
+            - name: SMTP_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secrets
+                  key: SMTP_FROM
+            - name: SMTP_FROM_NAME
+              value: "Vaultwarden"
+            - name: SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secrets
+                  key: SMTP_USERNAME
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secrets
+                  key: SMTP_PASSWORD
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
