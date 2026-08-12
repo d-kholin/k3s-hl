@@ -85,10 +85,12 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              # Idles around 180Mi but spikes well past 512Mi rendering the
+              # TeslaMate dashboards — 512Mi got it repeatedly OOMKilled.
+              memory: 1Gi
       volumes:
         - name: grafana-data
           persistentVolumeClaim:
