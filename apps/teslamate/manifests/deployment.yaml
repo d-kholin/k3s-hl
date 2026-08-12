@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teslamate
+  namespace: teslamate
+  labels:
+    app: teslamate
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: teslamate
+  template:
+    metadata:
+      labels:
+        app: teslamate
+    spec:
+      # Restricted PSA compliant. The compose stack already ran this with
+      # cap_drop: all; here it also runs as a fixed non-root uid.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: teslamate
+          image: teslamate/teslamate:4.0.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/Edmonton
+            - name: DATABASE_HOST
+              value: postgres
+            # DB credentials/name must match the old compose stack so a
+            # pg_dump restore drops straight in — they live in the
+            # SOPS-encrypted teslamate-secrets.
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: DATABASE_USER
+            - name: DATABASE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: DATABASE_PASS
+            - name: DATABASE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: DATABASE_NAME
+            - name: MQTT_HOST
+              value: mosquitto
+            # Must be the value the old stack used (TESLAMATE_ENCRYPTION_KEY)
+            # or the restored Tesla API tokens can't be decrypted.
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: ENCRYPTION_KEY
+            # Elixir release scripts want a writable tmp/home despite the
+            # read-only root filesystem.
+            - name: RELEASE_TMP
+              value: /tmp
+            - name: HOME
+              value: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            # TeslaFi/tesla-apiscraper CSV import drop-off. Transient — copy
+            # files in with `kubectl cp` if an import is ever needed.
+            - name: import
+              mountPath: /opt/app/import
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: import
+          emptyDir: {}

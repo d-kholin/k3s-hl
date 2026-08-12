@@ -1,0 +1,24 @@
+# Argo CD Application for TeslaMate (Tesla data logger) and its companions:
+# TeslaMateApi, Grafana dashboards, Mosquitto MQTT broker, Postgres.
+# Workload path: apps/teslamate/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: teslamate
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/teslamate/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: teslamate
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

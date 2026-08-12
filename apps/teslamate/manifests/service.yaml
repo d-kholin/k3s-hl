@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: teslamate
+  namespace: teslamate
+  labels:
+    app: teslamate
+spec:
+  type: ClusterIP
+  selector:
+    app: teslamate
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+      protocol: TCP

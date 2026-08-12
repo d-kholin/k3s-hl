@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: teslamate-pgdata-encrypted
+  namespace: teslamate
+  annotations:
+    # Never let Argo delete this PVC (prune or app deletion) — the entire
+    # driving history lives here.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 10Gi
