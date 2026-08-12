@@ -47,14 +47,96 @@ spec:
               value: "1000"
             - name: TZ
               value: America/Edmonton
-            # Default admin is changeme@example.com / MyPassword — change it on
-            # first login, keep signups closed.
+            - name: DB_ENGINE
+              value: postgres
+            - name: POSTGRES_SERVER
+              value: postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            # postgres:15 with no POSTGRES_DB defaults the database name to
+            # the user name.
+            - name: POSTGRES_DB
+              value: mealie
+            - name: POSTGRES_USER
+              value: mealie
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: POSTGRES_PASSWORD
+            - name: MAX_WORKERS
+              value: "1"
+            - name: WEB_CONCURRENCY
+              value: "1"
+            # Matches the compose stack it was migrated from.
             - name: ALLOW_SIGNUP
-              value: "false"
+              value: "true"
             # Used for share/notification links and OIDC callbacks — keep in
-            # sync with the Pangolin resource URL.
+            # sync with the Pangolin resource URL and the redirect URIs
+            # registered on the SSO client. Tenant-specific, so it lives in
+            # the SOPS-encrypted mealie-secrets.
             - name: BASE_URL
-              value: https://mealie.thegriffiths.ca
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: BASE_URL
+            # OIDC login; discovery URL, provider name, and client id/secret
+            # are tenant-specific and live in the SOPS-encrypted mealie-secrets.
+            - name: OIDC_AUTH_ENABLED
+              value: "true"
+            - name: OIDC_CONFIGURATION_URL
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: OIDC_CONFIGURATION_URL
+            - name: OIDC_PROVIDER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: OIDC_PROVIDER_NAME
+            - name: OIDC_AUTO_REDIRECT
+              value: "false"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: OIDC_CLIENT_ID
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: OIDC_CLIENT_SECRET
+            # SMTP for invites and notifications; host, from address, and
+            # credentials live in the SOPS-encrypted mealie-secrets.
+            - name: SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: SMTP_HOST
+            - name: SMTP_PORT
+              value: "587"
+            - name: SMTP_AUTH_STRATEGY
+              value: TLS
+            - name: SMTP_FROM_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: SMTP_FROM_NAME
+            - name: SMTP_FROM_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: SMTP_FROM_EMAIL
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: SMTP_USER
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mealie-secrets
+                  key: SMTP_PASSWORD
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

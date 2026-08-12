@@ -9,6 +9,12 @@ resources:
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml
+  - postgres-pvc.yaml
+  - postgres-deployment.yaml
+  - postgres-service.yaml
+
+generators:
+  - ksops-generator.yaml
 
 # Metadata-only labels (selectors are set explicitly in the manifests —
 # the deprecated commonLabels used to inject them, and selectors are immutable).

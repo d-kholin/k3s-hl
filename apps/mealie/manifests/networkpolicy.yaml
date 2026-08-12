@@ -30,3 +30,24 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+---
+# Postgres accepts connections only from the Mealie pods.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-mealie-to-postgres
+  namespace: mealie
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: mealie
+      ports:
+        - protocol: TCP
+          port: 5432
