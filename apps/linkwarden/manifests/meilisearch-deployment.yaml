@@ -33,7 +33,7 @@ spec:
         - name: meilisearch
           # Version pinned by Linkwarden's own docker-compose — bump alongside
           # Linkwarden releases rather than independently.
-          image: getmeili/meilisearch:v1.12.8
+          image: getmeili/meilisearch:v1.53.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
