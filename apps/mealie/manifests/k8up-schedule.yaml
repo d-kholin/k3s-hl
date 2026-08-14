@@ -1,0 +1,61 @@
+# K8up backups for this namespace: a nightly restic backup of every PVC not
+# annotated k8up.io/backup=false, plus the k8up.io/backupcommand pg_dump (see
+# postgres-deployment.yaml), into the Garage bucket folder naku-k8up/mealie —
+# a standard restic repo, browsable/restorable from any tailnet machine.
+# Endpoint, credentials, and repo password come from the operator globals
+# (k8up-global secret in the k8up namespace) — nothing app-specific here.
+# See docs/backups.md.
+
+# Makes the k8up job pods restricted-PSA compliant and runs them as the data
+# volume's owner so file backups can read it. K8up re-applies name/image/
+# command after merging this template; env/args/mounts are set afterwards.
+apiVersion: k8up.io/v1
+kind: PodConfig
+metadata:
+  name: backup-pod
+  namespace: mealie
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backup
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: backup
+  namespace: mealie
+spec:
+  podConfigRef:
+    name: backup-pod
+  backend:
+    s3:
+      # Top-level folder in the shared bucket = this namespace's restic repo.
+      bucket: naku-k8up/mealie
+  backup:
+    # -random schedules are stable per Schedule and spread load across apps.
+    schedule: "@daily-random"
+    failedJobsHistoryLimit: 2
+    successfulJobsHistoryLimit: 2
+  check:
+    schedule: "@weekly-random"
+  prune:
+    schedule: "@weekly-random"
+    retention:
+      keepLast: 3
+      keepDaily: 14
+      keepWeekly: 5
+      keepMonthly: 6
