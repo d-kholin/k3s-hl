@@ -47,8 +47,11 @@ spec:
                   key: POSTGRES_PASSWORD
             # Subdirectory of the mount — initdb refuses a data dir that isn't
             # empty (the volume root holds lost+found / fsGroup metadata).
+            # Version-suffixed since the 15->18 upgrade: 18 initdb'd fresh here
+            # and the data was pg_restore'd from a dump; ../pgdata is the old
+            # 15 directory, kept as a fallback.
             - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
+              value: /var/lib/postgresql/data/pgdata18
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
