@@ -98,9 +98,9 @@ kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
 - Image: `ghcr.io/linkwarden/linkwarden:v2.16.0`, plus per-namespace `postgres:18` and `getmeili/meilisearch:v1.12.8` (search backend; version pinned by Linkwarden's compose)
 - Data: Longhorn PVCs `linkwarden-data-encrypted` (**10Gi**, archives), `linkwarden-pgdata-encrypted` (**5Gi**), `linkwarden-meili-encrypted` (**2Gi**)
 - In-cluster URL: `http://linkwarden.linkwarden.svc.cluster.local:3000`
-- `NEXTAUTH_URL` (in the SOPS secret) is `https://links.thegriffiths.ca/api/v1/auth`; keep the host in sync with the Pangolin resource.
+- `NEXTAUTH_URL` (in the SOPS secret) is `https://<public host>/api/v1/auth`; keep the host in sync with the Pangolin resource.
 - First run: registration is open — create your account, then set `NEXT_PUBLIC_DISABLE_REGISTRATION=true` in the deployment.
-- SSO (Pocket ID via the Authentik provider) is wired but disabled: register an OIDC client in Pocket ID (callback `https://links.thegriffiths.ca/api/v1/auth/callback/authentik`), put its id/secret in the SOPS secret, then flip `NEXT_PUBLIC_AUTHENTIK_ENABLED=true`.
+- SSO (external IdP via the Authentik provider — plain issuer-discovery OIDC) is wired but disabled: register an OIDC client on the IdP (callback `https://<public host>/api/v1/auth/callback/authentik`), put its id/secret and the issuer in the SOPS secret, then flip `NEXT_PUBLIC_AUTHENTIK_ENABLED=true`.
 
 ```bash
 kubectl -n linkwarden get pods,svc,pvc
@@ -116,7 +116,7 @@ kubectl -n linkwarden port-forward svc/linkwarden 3000:3000
 - Data: Longhorn PVC `mealie-data-encrypted` (**5Gi**, RWO) mounted at `/app/data` (SQLite)
 - In-cluster URL: `http://mealie.mealie.svc.cluster.local:9000`
 - First login: `changeme@example.com` / `MyPassword` — change immediately. Signups disabled (`ALLOW_SIGNUP=false`).
-- `BASE_URL` is set to `https://mealie.thegriffiths.ca`; keep it in sync with the Pangolin resource.
+- `BASE_URL` (in the SOPS secret) is the public URL; keep it in sync with the Pangolin resource.
 
 ```bash
 kubectl -n mealie get pods,svc,pvc

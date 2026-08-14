@@ -76,18 +76,25 @@ spec:
             # this to "true". SSO sign-ins are unaffected by this flag.
             - name: NEXT_PUBLIC_DISABLE_REGISTRATION
               value: "false"
-            # SSO via Pocket ID (sso.thegriffiths.ca). Linkwarden has no
-            # generic OIDC provider; its Authentik integration is plain
-            # issuer-discovery OIDC and works with Pocket ID. Flip to "true"
-            # after registering an OIDC client in Pocket ID (callback URL
+            # SSO via the external IdP. Linkwarden has no generic OIDC
+            # provider; its Authentik integration is plain issuer-discovery
+            # OIDC and works with any spec-compliant IdP. Flip to "true"
+            # after registering an OIDC client on the IdP (callback URL
             # https://<public host>/api/v1/auth/callback/authentik) and
-            # putting its id/secret in linkwarden-secrets.
+            # putting its id/secret in linkwarden-secrets. Issuer and display
+            # name are tenant-identifying, so they live in the secret too.
             - name: NEXT_PUBLIC_AUTHENTIK_ENABLED
               value: "false"
             - name: AUTHENTIK_CUSTOM_NAME
-              value: Griffiths SSO
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: AUTHENTIK_CUSTOM_NAME
             - name: AUTHENTIK_ISSUER
-              value: https://sso.thegriffiths.ca
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: AUTHENTIK_ISSUER
             - name: AUTHENTIK_CLIENT_ID
               valueFrom:
                 secretKeyRef:

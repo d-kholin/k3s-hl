@@ -50,9 +50,14 @@ spec:
             # Non-root can't bind :80 — listen on 8080 (Service still exposes 80).
             - name: ROCKET_PORT
               value: "8080"
-            # Public URL — emailed links (invites, verification) are built from this.
+            # Public URL — emailed links (invites, verification) are built
+            # from this. Tenant-identifying, so it lives in the SOPS-encrypted
+            # vaultwarden-secrets; keep in sync with the Pangolin resource.
             - name: DOMAIN
-              value: "https://pass.k3s.thegriffiths.ca"
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secrets
+                  key: DOMAIN
             # SMTP for invites, email verification, and 2FA email. Host, from
             # address, and credentials live in the SOPS-encrypted vaultwarden-secrets.
             - name: SMTP_HOST
