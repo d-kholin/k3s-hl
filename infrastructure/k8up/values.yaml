@@ -1,0 +1,46 @@
+# Values for the k8up Helm chart (see application.yaml in this directory).
+#
+# All backend credentials are operator-level globals sourced from the
+# k8up-global secret (k8up-config app, SOPS-encrypted): S3 endpoint, access
+# key, secret key, and the shared restic repository password. Per-namespace
+# Schedules only set their bucket/folder (naku-k8up/<namespace>) — adding an
+# app to backups needs a Schedule manifest and no new credentials.
+
+k8up:
+  # Schedule crons run in local time.
+  timezone: America/Edmonton
+  envVars:
+    - name: BACKUP_GLOBALS3ENDPOINT
+      valueFrom:
+        secretKeyRef:
+          name: k8up-global
+          key: BACKUP_GLOBALS3ENDPOINT
+    - name: BACKUP_GLOBALACCESSKEYID
+      valueFrom:
+        secretKeyRef:
+          name: k8up-global
+          key: BACKUP_GLOBALACCESSKEYID
+    - name: BACKUP_GLOBALSECRETACCESSKEY
+      valueFrom:
+        secretKeyRef:
+          name: k8up-global
+          key: BACKUP_GLOBALSECRETACCESSKEY
+    - name: BACKUP_GLOBALREPOPASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: k8up-global
+          key: BACKUP_GLOBALREPOPASSWORD
+  # Requests for the per-namespace backup job pods. No limits — restic memory
+  # use scales with repo size, and an OOM kill fails the backup.
+  globalResources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+metrics:
+  service:
+    port: 8080
+  # The ServiceMonitor lives in monitoring-config (same pattern as Longhorn)
+  # so CRD ordering stays out of this chart sync.
+  serviceMonitor:
+    enabled: false

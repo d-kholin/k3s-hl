@@ -1,0 +1,50 @@
+# K8up backup operator (Helm): restic file/app-level backups of app PVCs and
+# database dumps to the Garage S3 target. Complements Longhorn's block-level
+# backups — restic repos are standard-format, so single files are browsable
+# and restorable from any tailnet machine even with the cluster down
+# (see docs/backups.md).
+#
+# Wave 1 alongside the other operators; the wave-2 k8up-config app supplies
+# the k8up-global secret referenced by values.yaml. On a fresh cluster the
+# operator pod sits in CreateContainerConfigError until that secret lands —
+# kubelet retries make this self-healing.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8up
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://k8up-io.github.io/k8up
+      chart: k8up
+      targetRevision: 4.10.0
+      helm:
+        releaseName: k8up
+        valueFiles:
+          - $values/infrastructure/k8up/values.yaml
+    - repoURL: https://github.com/d-kholin/k3s-hl.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: k8up
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

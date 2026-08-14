@@ -1,0 +1,37 @@
+# K8up cluster config that can't live in the Helm values: the k8up-global
+# secret holding the S3 endpoint, Garage key, and shared restic repository
+# password used by every namespace's Schedule.
+#
+# Depends on k8up (wave 1) only for the target namespace — wave 2 +
+# SkipDryRunOnMissingResource + retry cover first sync on a fresh cluster.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8up-config
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: infrastructure/k8up-config/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: k8up
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
