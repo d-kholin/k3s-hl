@@ -1,0 +1,23 @@
+# Argo CD Application for Dawarich (self-hosted location history tracker).
+# Workload path: apps/dawarich/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dawarich
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/dawarich/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dawarich
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: dawarich
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      # Restricted PSA compliant. The postgis image (postgres-based) normally
+      # starts as root and drops to uid 999; starting directly as 999 skips
+      # the drop and runs initdb/postgres as that user.
+      #
+      # Debian variant (not alpine like the old compose host): uid 999 matches
+      # the repo's postgres pattern, and the data arrives via dump/restore so
+      # the libc/collation change is harmless.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          # PostGIS is required (geodata columns); stay on postgres 17 so the
+          # dump from the compose host restores without a major-version jump.
+          image: postgis/postgis:17-3.5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich-secrets
+                  key: POSTGRES_PASSWORD
+            # Subdirectory of the mount — initdb refuses a data dir that isn't
+            # empty (the volume root holds lost+found / fsGroup metadata).
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+            # Unix socket dir and scratch space — writable despite the
+            # read-only root filesystem.
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+            # PostGIS spatial queries exhaust the 64Mi container default.
+            - name: dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - postgres
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: dawarich-pgdata-encrypted
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi

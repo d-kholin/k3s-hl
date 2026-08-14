@@ -1,0 +1,283 @@
+# Dawarich web + sidekiq run as two containers in one pod: they must share
+# public/ (exports), storage/ (Active Storage) and tmp/imports/watched
+# (drop-dir imports), and co-locating them lets a single RWO PVC serve both
+# via subPaths instead of needing an RWX volume.
+#
+# Trade-off vs the upstream compose file: containers in a pod can't be
+# ordered, so sidekiq only waits for the database (its entrypoint does that)
+# and may briefly run against a not-yet-migrated schema during upgrades;
+# failed jobs retry once the web container finishes migrating.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dawarich
+  namespace: dawarich
+  labels:
+    app: dawarich
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: dawarich
+      app.kubernetes.io/name: dawarich
+  template:
+    metadata:
+      labels:
+        app: dawarich
+        app.kubernetes.io/name: dawarich
+    spec:
+      # Restricted PSA compliant. The image defaults to root but its
+      # entrypoints run fine unprivileged as long as every path Rails writes
+      # is a mounted volume: public/, storage/ and the watched import dir
+      # (PVC subPaths), tmp/ and log/ (emptyDirs), and db/ — see the init
+      # container.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # RAILS_ENV=development (Dawarich's supported self-hosted mode) dumps
+        # db/schema.rb after migrations, but the image's app tree is
+        # root-owned. Copy db/ to a writable emptyDir that shadows it.
+        - name: copy-db-tree
+          image: freikin/dawarich:1.11.0
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "cp -a /var/app/db/. /db-rw/"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: db-rw
+              mountPath: /db-rw
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      containers:
+        - name: dawarich
+          image: freikin/dawarich:1.11.0
+          imagePullPolicy: IfNotPresent
+          command: ["web-entrypoint.sh"]
+          args: ["bin/rails", "server", "-p", "3000", "-b", "::"]
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            # Development is Dawarich's supported self-hosted mode (matches
+            # the upstream compose file); the database name reflects that.
+            - name: RAILS_ENV
+              value: development
+            - name: DATABASE_HOST
+              value: postgres
+            - name: DATABASE_USERNAME
+              value: postgres
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_NAME
+              value: dawarich_development
+            - name: REDIS_URL
+              value: redis://redis:6379
+            # Comma-separated Rails host allowlist. Contains the public
+            # hostname (tenant-identifying), so it lives in the SOPS secret.
+            # Keep in sync with the Pangolin resource URL.
+            - name: APPLICATION_HOSTS
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich-secrets
+                  key: APPLICATION_HOSTS
+            - name: APPLICATION_PROTOCOL
+              value: http
+            - name: TIME_ZONE
+              value: America/Edmonton
+            - name: DISTANCE_UNIT
+              value: km
+            - name: MIN_MINUTES_SPENT_IN_CITY
+              value: "60"
+            - name: SELF_HOSTED
+              value: "true"
+            - name: PROMETHEUS_EXPORTER_ENABLED
+              value: "false"
+            # Self-hosted Photon reverse-geocoder (runs outside the cluster).
+            - name: PHOTON_API_HOST
+              value: 172.20.1.181:2322
+            - name: PHOTON_API_USE_HTTPS
+              value: "false"
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Writable root filesystem is required: Rack buffers uploads to
+            # /tmp, and the entrypoint's asset sync reads /tmp/public_assets
+            # from the image — mounting an emptyDir over /tmp would hide it.
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # Compiled assets (synced from the image at boot) and exports.
+            - name: data
+              mountPath: /var/app/public
+              subPath: public
+            # Active Storage: uploaded/imported files.
+            - name: data
+              mountPath: /var/app/storage
+              subPath: storage
+            # Drop-dir imports, polled by sidekiq.
+            - name: data
+              mountPath: /var/app/tmp/imports/watched
+              subPath: watched
+            - name: tmp
+              mountPath: /var/app/tmp
+            - name: log
+              mountPath: /var/app/log
+            - name: db-rw
+              mountPath: /var/app/db
+          # Mirrors the compose healthcheck: probe from inside so the Host
+          # header (127.0.0.1) passes the APPLICATION_HOSTS allowlist.
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q ok
+            # First boot runs migrations + asset sync; allow up to 5 minutes.
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q ok
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q ok
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+        - name: sidekiq
+          image: freikin/dawarich:1.11.0
+          imagePullPolicy: IfNotPresent
+          command: ["sidekiq-entrypoint.sh"]
+          args: ["sidekiq"]
+          env:
+            - name: RAILS_ENV
+              value: development
+            - name: DATABASE_HOST
+              value: postgres
+            - name: DATABASE_USERNAME
+              value: postgres
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich-secrets
+                  key: POSTGRES_PASSWORD
+            - name: DATABASE_NAME
+              value: dawarich_development
+            - name: REDIS_URL
+              value: redis://redis:6379
+            # Sidekiq serves no HTTP; localhost suffices (as in compose).
+            - name: APPLICATION_HOSTS
+              value: localhost
+            - name: APPLICATION_PROTOCOL
+              value: http
+            - name: TIME_ZONE
+              value: America/Edmonton
+            - name: DISTANCE_UNIT
+              value: km
+            - name: BACKGROUND_PROCESSING_CONCURRENCY
+              value: "10"
+            - name: SELF_HOSTED
+              value: "true"
+            - name: STORE_GEODATA
+              value: "true"
+            - name: PROMETHEUS_EXPORTER_ENABLED
+              value: "false"
+            - name: PHOTON_API_HOST
+              value: 172.20.1.181:2322
+            - name: PHOTON_API_USE_HTTPS
+              value: "false"
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Same constraint as the web container: job code writes tempfiles
+            # to /tmp during imports/exports.
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /var/app/public
+              subPath: public
+            - name: data
+              mountPath: /var/app/storage
+              subPath: storage
+            - name: data
+              mountPath: /var/app/tmp/imports/watched
+              subPath: watched
+            # Own tmp/log — only the watched import dir is shared with web.
+            - name: sidekiq-tmp
+              mountPath: /var/app/tmp
+            - name: sidekiq-log
+              mountPath: /var/app/log
+            - name: db-rw
+              mountPath: /var/app/db
+              readOnly: true
+          # Matches the compose healthcheck. Also true while the entrypoint
+          # is still waiting for postgres (the script name matches).
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pgrep -f sidekiq
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: dawarich-data-encrypted
+        - name: tmp
+          emptyDir: {}
+        - name: log
+          emptyDir: {}
+        - name: sidekiq-tmp
+          emptyDir: {}
+        - name: sidekiq-log
+          emptyDir: {}
+        - name: db-rw
+          emptyDir: {}
