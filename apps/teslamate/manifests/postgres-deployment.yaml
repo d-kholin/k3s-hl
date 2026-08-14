@@ -17,6 +17,13 @@ spec:
     metadata:
       labels:
         app: postgres
+      annotations:
+        # K8up execs this on every backup run and stores stdout in the restic
+        # repo as /teslamate-postgres.sql. Restore via `restic dump ... | psql`
+        # — the Restore CRD can't restore stdin-based snapshots.
+        # See docs/backups.md.
+        k8up.io/backupcommand: sh -c 'PGDATABASE="$POSTGRES_DB" PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean'
+        k8up.io/file-extension: .sql
     spec:
       # Restricted PSA compliant. The official postgres image normally starts
       # as root and drops to uid 999; starting directly as 999 skips the drop

@@ -7,6 +7,10 @@ metadata:
     # Never let Argo delete this PVC (prune or app deletion) — the entire
     # driving history lives here.
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    # Skip K8up's file backup — raw pgdata would be a torn copy. The nightly
+    # pg_dump (see postgres-deployment.yaml) is the usable backup; weekly
+    # Longhorn block backups cover whole-volume DR.
+    k8up.io/backup: "false"
 spec:
   accessModes:
     - ReadWriteOnce

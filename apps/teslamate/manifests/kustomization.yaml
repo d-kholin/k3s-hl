@@ -18,6 +18,7 @@ resources:
   - postgres-deployment.yaml
   - postgres-service.yaml
   - networkpolicy.yaml
+  - k8up-schedule.yaml
 
 generators:
   - ksops-generator.yaml

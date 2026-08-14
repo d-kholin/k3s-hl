@@ -15,6 +15,7 @@ resources:
   - meilisearch-pvc.yaml
   - meilisearch-deployment.yaml
   - meilisearch-service.yaml
+  - k8up-schedule.yaml
 
 generators:
   - ksops-generator.yaml

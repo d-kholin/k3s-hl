@@ -1,0 +1,43 @@
+# K8up alerts: the restic file/dump backups silently failing or silently not
+# running. Complements the Longhorn block-backup alerts.
+#
+# k8up_schedule_last_job_succeeded{namespace,schedule,jobType}: 1 if the most
+# recent job triggered by the schedule succeeded, 0 if it failed.
+# k8up_jobs_successful_counter{namespace,jobType}: pre-created at 0 for every
+# namespace with a Schedule, so increase() works from day one.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k8up
+  namespace: monitoring
+spec:
+  groups:
+    - name: k8up
+      rules:
+        - alert: K8upLastJobFailed
+          expr: k8up_schedule_last_job_succeeded == 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              K8up {{ $labels.jobType }} in {{ $labels.namespace }} failed
+            description: >-
+              The most recent {{ $labels.jobType }} job of schedule
+              {{ $labels.schedule }} in namespace {{ $labels.namespace }}
+              failed — check `kubectl -n {{ $labels.namespace }} get jobs`
+              and the job pod logs. Clears itself on the next successful run.
+
+        - alert: K8upBackupStale
+          expr: >-
+            increase(k8up_jobs_successful_counter{jobType="backup"}[26h]) == 0
+          for: 3h
+          labels:
+            severity: warning
+          annotations:
+            summary: No successful K8up backup in {{ $labels.namespace }} for >26h
+            description: >-
+              Namespace {{ $labels.namespace }} has produced no successful
+              nightly restic backup in over 26 hours — the schedule may have
+              stopped firing or every run is failing. (Expected briefly on a
+              brand-new namespace until its first nightly backup lands.)

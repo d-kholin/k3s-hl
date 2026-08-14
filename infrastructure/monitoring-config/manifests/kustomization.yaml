@@ -6,6 +6,8 @@ namespace: monitoring
 resources:
   - servicemonitor-longhorn.yaml
   - prometheusrule-longhorn.yaml
+  - servicemonitor-k8up.yaml
+  - prometheusrule-k8up.yaml
 
 generators:
   - ksops-generator.yaml

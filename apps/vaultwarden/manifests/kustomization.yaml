@@ -9,6 +9,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - networkpolicy.yaml
+  - k8up-schedule.yaml
 
 generators:
   - ksops-generator.yaml

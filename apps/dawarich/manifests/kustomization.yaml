@@ -14,6 +14,7 @@ resources:
   - postgres-service.yaml
   - redis-deployment.yaml
   - redis-service.yaml
+  - k8up-schedule.yaml
 
 generators:
   - ksops-generator.yaml

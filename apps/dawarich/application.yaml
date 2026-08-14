@@ -21,3 +21,13 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    # k8up-schedule.yaml needs the K8up CRDs (wave-1 infra app) — skip dry-run
+    # + retry cover first sync on a fresh cluster.
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

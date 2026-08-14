@@ -18,8 +18,10 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 │   ├── argocd/                # Argo CD manages itself (install.yaml + KSOPS patch)
 │   ├── longhorn/              # Longhorn Helm
 │   ├── longhorn-config/       # Encrypted StorageClass, S3 backup target, RecurringJobs
+│   ├── k8up/                  # K8up Helm (restic file/dump backups)
+│   ├── k8up-config/           # Global backend credentials (SOPS)
 │   ├── monitoring/            # kube-prometheus-stack Helm
-│   └── monitoring-config/     # Alertmanager email (SOPS), Longhorn alerts
+│   └── monitoring-config/     # Alertmanager email (SOPS), Longhorn + K8up alerts
 └── apps/
     ├── actual-budget/         # Actual Budget (personal finance)
     ├── newt/                  # Pangolin tunnel client (two redundant sites)
@@ -32,9 +34,11 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 |-----------|---------|--------|
 | **argocd** | Argo CD manages itself | Stock `install.yaml` v3.5.0 + KSOPS repo-server patch; bootstrap via `kubectl apply -k` |
 | **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
-| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), snapshot + tiered S3 backups |
+| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), snapshots + weekly/monthly S3 block backups |
+| **k8up** | File/dump-level backups | Nightly restic backups per namespace to Garage; restorable per file from any tailnet machine ([docs/backups.md](docs/backups.md)) |
+| **k8up-config** | K8up credentials | One SOPS secret: S3 endpoint, Garage key, shared restic repo password |
 | **monitoring** | kube-prometheus-stack | Prometheus (14d), Alertmanager → email, Grafana (ClusterIP) |
-| **monitoring-config** | Alerting config | Alertmanager SMTP/email (SOPS), Longhorn scrape + alert rules |
+| **monitoring-config** | Alerting config | Alertmanager SMTP/email (SOPS), Longhorn + K8up scrape + alert rules |
 | **coredns-custom** | Cluster DNS overrides | Pins `garage.nakunga.com` (S3 backup target, Tailscale-only) for pods |
 
 ### Volume encryption & backups
@@ -48,10 +52,14 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
   credentials in `longhorn-config/manifests/backup-target-secret.sops.yaml`.
   Nodes are joined to the tailnet (`tailscale up --accept-dns=false`); pod DNS
   for the hostname comes from the `coredns-custom` app.
-- **Schedule** (all volumes, group `default`): local snapshots every 6h
-  (retain 8) for fast rollback, plus tiered S3 backups — daily 03:00
-  (retain 7), Saturday 04:30 (retain 5), monthly (retain 6) → recovery
-  points span ~6 months.
+- **Two backup tiers** (details in [docs/backups.md](docs/backups.md)):
+  - **K8up/restic (nightly, usable tier)**: per-namespace restic repos in the
+    `naku-k8up` bucket — file-level PVC backups plus `pg_dump` SQL for the
+    Postgres apps. restic encrypts client-side; single files are restorable
+    from any tailnet machine, cluster up or not.
+  - **Longhorn block (DR tier)**: local snapshots every 6h (retain 8) for
+    fast rollback, plus S3 block backups Saturday 04:30 (retain 5) and
+    monthly (retain 6) → whole-volume recovery points span ~6 months.
 - **Disaster recovery**: full cluster-rebuild runbook in
   [docs/disaster-recovery.md](docs/disaster-recovery.md). Restoring backups
   needs the crypto passphrase → which needs an age private key from
@@ -178,8 +186,9 @@ Rebuilding with data restore: follow [docs/disaster-recovery.md](docs/disaster-r
 
 ### Monitoring & email alerts
 
-kube-prometheus-stack with Longhorn rules: volume degraded/faulted, backup
-older than 26h, volume never backed up, Longhorn node unready, disk >85%.
+kube-prometheus-stack with Longhorn rules (volume degraded/faulted, block
+backup older than 8 days, volume never backed up, Longhorn node unready,
+disk >85%) and K8up rules (last job failed, no successful backup in 26h).
 Alertmanager emails them; SMTP host/credentials and the destination address
 live encrypted in git — fill them in with:
 

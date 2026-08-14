@@ -7,6 +7,8 @@ metadata:
     # Never let Argo delete this PVC — the search index is rebuildable but a
     # reindex means re-fetching every archived page's text.
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    # Skip K8up backup — rebuildable index, not worth the repo space.
+    k8up.io/backup: "false"
 spec:
   accessModes:
     - ReadWriteOnce

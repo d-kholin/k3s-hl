@@ -9,8 +9,16 @@ Everything needed to rebuild lives in exactly two places:
    Garage are unrecoverable. Verify you can find it before you need it.
 
 Volume *data* is in the Garage S3 backup target (`garage.nakunga.com`,
-Tailscale-only). Backups of `longhorn-encrypted` volumes are ciphertext;
-restoring them needs the crypto secret, which comes from git + the age key.
+Tailscale-only), twice over (see [backups.md](backups.md)):
+
+- **Longhorn block backups** (`naku-longhorn` bucket, weekly + monthly) —
+  ciphertext volumes; restoring needs the crypto secret from git + age key.
+  This is the whole-cluster rebuild path below.
+- **K8up restic backups** (`naku-k8up` bucket, nightly files + SQL dumps) —
+  standard restic repos, readable from any tailnet machine with the repo
+  password from `infrastructure/k8up-config/manifests/global-secret.sops.yaml`.
+  For "the cluster is down and I need a file/database *right now*", this is
+  the fast path — no cluster required (see backups.md "Restoring").
 
 ## Rebuild procedure
 
@@ -93,8 +101,13 @@ kubectl -n vaultwarden get pods             # data present when you log in
 kubectl -n longhorn-system get backuptargets.longhorn.io  # target reachable
 ```
 
-Within 26 hours the `LonghornVolumeBackupTooOld` alert confirms (by staying
-quiet) that backups are flowing again.
+Within ~24 hours each namespace's nightly K8up backup runs (the
+`K8upBackupStale` alert stays quiet), and within 8 days the weekly Longhorn
+block backup confirms the same for the block tier
+(`LonghornVolumeBackupTooOld`).
+
+Note: freshly restored volumes re-run their first nightly restic backup
+against the existing repos — dedup means only changed blocks upload.
 
 ## Ongoing hygiene
 
@@ -102,6 +115,10 @@ quiet) that backups are flowing again.
   backup to a scratch name in the Longhorn UI, attach + mount it on a node
   (or spin up a throwaway pod with a PVC created from it) and check the
   files. An unverified backup is a hope, not a backup.
+- **Test the restic path too**: from a laptop, `restic snapshots` against a
+  repo and pull one file back; for a Postgres app, `restic dump` the SQL
+  into a scratch database (see backups.md). Also verify the repo password's
+  offline copy still matches.
 - After rotating age keys, re-encrypt every `*.sops.yaml` (`sops updatekeys`)
   and refresh both the `sops-age` secret and the offline copy.
 - The Argo CD admin password is regenerated on reinstall:

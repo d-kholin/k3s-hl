@@ -1,0 +1,64 @@
+# K8up backups for this namespace: a nightly restic backup of /data into the
+# Garage bucket folder naku-k8up/actual-budget — a standard restic repo,
+# browsable/restorable from any tailnet machine.
+# Endpoint, credentials, and repo password come from the operator globals
+# (k8up-global secret in the k8up namespace) — nothing app-specific here.
+# See docs/backups.md.
+#
+# Note: the actual-server image ships no sqlite3 CLI, so the SQLite files are
+# backed up live (WAL-journaled). Point-in-time consistency is covered by
+# Longhorn's 6-hourly snapshots and weekly block backups.
+
+# Makes the k8up job pods restricted-PSA compliant and runs them as the data
+# volume's owner so file backups can read it. K8up re-applies name/image/
+# command after merging this template; env/args/mounts are set afterwards.
+apiVersion: k8up.io/v1
+kind: PodConfig
+metadata:
+  name: backup-pod
+  namespace: actual-budget
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backup
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: backup
+  namespace: actual-budget
+spec:
+  podConfigRef:
+    name: backup-pod
+  backend:
+    s3:
+      # Top-level folder in the shared bucket = this namespace's restic repo.
+      bucket: naku-k8up/actual-budget
+  backup:
+    # -random schedules are stable per Schedule and spread load across apps.
+    schedule: "@daily-random"
+    failedJobsHistoryLimit: 2
+    successfulJobsHistoryLimit: 2
+  check:
+    schedule: "@weekly-random"
+  prune:
+    schedule: "@weekly-random"
+    retention:
+      keepLast: 3
+      keepDaily: 14
+      keepWeekly: 5
+      keepMonthly: 6
