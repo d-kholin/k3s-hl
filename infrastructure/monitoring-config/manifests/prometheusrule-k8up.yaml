@@ -3,8 +3,12 @@
 #
 # k8up_schedule_last_job_succeeded{namespace,schedule,jobType}: 1 if the most
 # recent job triggered by the schedule succeeded, 0 if it failed.
-# k8up_jobs_successful_counter{namespace,jobType}: pre-created at 0 for every
-# namespace with a Schedule, so increase() works from day one.
+#
+# Staleness deliberately uses kube-state-metrics job data, NOT the
+# k8up_jobs_*_counter series: those counters live in the operator's memory
+# and reset to 0 whenever it restarts (e.g. lost leader election), which
+# made increase()==0 false-fire. Job objects persist (history limit 2), so
+# completion timestamps survive operator restarts.
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -29,15 +33,24 @@ spec:
               and the job pod logs. Clears itself on the next successful run.
 
         - alert: K8upBackupStale
+          # Namespaces that have k8up Schedules but no backup job completed
+          # in 26h. The unless-join also keeps longhorn-system's unrelated
+          # backup-daily/weekly jobs out (no Schedule there).
           expr: >-
-            increase(k8up_jobs_successful_counter{jobType="backup"}[26h]) == 0
+            (k8up_schedules_gauge > 0)
+            unless on (namespace)
+            (
+              time()
+              - max by (namespace) (kube_job_status_completion_time{job_name=~"backup-.*"})
+              < 26 * 3600
+            )
           for: 3h
           labels:
             severity: warning
           annotations:
             summary: No successful K8up backup in {{ $labels.namespace }} for >26h
             description: >-
-              Namespace {{ $labels.namespace }} has produced no successful
-              nightly restic backup in over 26 hours — the schedule may have
-              stopped firing or every run is failing. (Expected briefly on a
-              brand-new namespace until its first nightly backup lands.)
+              Namespace {{ $labels.namespace }} has no completed restic backup
+              job in over 26 hours — the schedule may have stopped firing or
+              every run is failing. (Expected on a brand-new namespace until
+              its first nightly backup lands.)

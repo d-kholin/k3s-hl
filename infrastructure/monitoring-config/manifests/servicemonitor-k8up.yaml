@@ -17,3 +17,7 @@ spec:
     - port: http
       path: /metrics
       interval: 30s
+      # K8up's metrics carry the APP namespace in their namespace label;
+      # without this Prometheus overwrites it with "k8up" and demotes the
+      # real one to exported_namespace, breaking the alert templates.
+      honorLabels: true
