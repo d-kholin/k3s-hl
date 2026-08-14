@@ -49,7 +49,9 @@ spec:
         - name: copy-db-tree
           image: freikin/dawarich:1.11.0
           imagePullPolicy: IfNotPresent
-          command: ["sh", "-c", "cp -a /var/app/db/. /db-rw/"]
+          # -r, not -a: preserving times on the mount point itself fails as
+          # non-root (kubelet owns it), and cp treats that as an error.
+          command: ["sh", "-c", "cp -r /var/app/db/. /db-rw/"]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
