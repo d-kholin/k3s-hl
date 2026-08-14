@@ -1,0 +1,23 @@
+# Argo CD Application for LubeLogger (vehicle maintenance tracker).
+# Workload path: apps/lubelogger/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lubelogger
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/lubelogger/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: lubelogger
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

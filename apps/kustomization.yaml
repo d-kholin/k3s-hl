@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   - actual-budget/application.yaml
+  - lubelogger/application.yaml
   - mealie/application.yaml
   - newt/application.yaml
   - teslamate/application.yaml
