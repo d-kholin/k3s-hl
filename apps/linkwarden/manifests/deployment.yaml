@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: linkwarden
+  namespace: linkwarden
+  labels:
+    app: linkwarden
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: linkwarden
+      app.kubernetes.io/name: linkwarden
+  template:
+    metadata:
+      labels:
+        app: linkwarden
+        app.kubernetes.io/name: linkwarden
+    spec:
+      # Restricted PSA compliant. The image ships no non-root user (app lives
+      # in /data, world-readable); uid 1000 works because every path it writes
+      # is a mounted volume: the archive data PVC, Next.js's runtime cache,
+      # HOME (Chromium profile/cache for page archiving) and /tmp.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: linkwarden
+          image: ghcr.io/linkwarden/linkwarden:v2.16.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/Edmonton
+            - name: HOME
+              value: /home/linkwarden
+            # Embeds the postgres password — lives in the SOPS secret whole.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: DATABASE_URL
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: NEXTAUTH_SECRET
+            # Must be https://<public host>/api/v1/auth — keep the host in
+            # sync with the Pangolin resource URL. Tenant-specific, so it
+            # lives in the SOPS-encrypted linkwarden-secrets.
+            - name: NEXTAUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: NEXTAUTH_URL
+            # Meilisearch powers search; without it search silently no-ops.
+            - name: MEILI_HOST
+              value: http://meilisearch:7700
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: MEILI_MASTER_KEY
+            # First run: registration is open — create your account, then set
+            # this to "true". SSO sign-ins are unaffected by this flag.
+            - name: NEXT_PUBLIC_DISABLE_REGISTRATION
+              value: "false"
+            # SSO via Pocket ID (sso.thegriffiths.ca). Linkwarden has no
+            # generic OIDC provider; its Authentik integration is plain
+            # issuer-discovery OIDC and works with Pocket ID. Flip to "true"
+            # after registering an OIDC client in Pocket ID (callback URL
+            # https://<public host>/api/v1/auth/callback/authentik) and
+            # putting its id/secret in linkwarden-secrets.
+            - name: NEXT_PUBLIC_AUTHENTIK_ENABLED
+              value: "false"
+            - name: AUTHENTIK_CUSTOM_NAME
+              value: Griffiths SSO
+            - name: AUTHENTIK_ISSUER
+              value: https://sso.thegriffiths.ca
+            - name: AUTHENTIK_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: AUTHENTIK_CLIENT_ID
+            - name: AUTHENTIK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: linkwarden-secrets
+                  key: AUTHENTIK_CLIENT_SECRET
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # Archives, screenshots, PDFs (STORAGE_FOLDER defaults to "data"
+            # under the /data workdir).
+            - name: data
+              mountPath: /data/data
+            # next start writes its runtime cache inside the app tree.
+            - name: next-cache
+              mountPath: /data/apps/web/.next/cache
+            - name: home
+              mountPath: /home/linkwarden
+            - name: tmp
+              mountPath: /tmp
+            # Chromium (page archiving) crashes on the 64Mi container default.
+            - name: dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            # prisma migrate deploy runs before the server starts.
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: linkwarden-data-encrypted
+        - name: next-cache
+          emptyDir: {}
+        - name: home
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi

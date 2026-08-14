@@ -1,0 +1,14 @@
+# KSOPS generator: decrypts secret.sops.yaml at kustomize build time (Argo CD).
+# Requires KSOPS installed as a Kustomize plugin in Argo CD and age key
+# available (Secret sops-age in argocd, or SOPS_AGE_KEY_FILE / env).
+
+apiVersion: viaduct.ai/v1
+kind: ksops
+metadata:
+  name: linkwarden-secrets
+  annotations:
+    config.kubernetes.io/function: |
+      exec:
+        path: ksops
+files:
+  - ./secret.sops.yaml

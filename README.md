@@ -66,6 +66,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 | App | Purpose | Access |
 |-----|---------|--------|
 | **actual-budget** | [Actual Budget](https://actualbudget.org) sync server + web UI | ClusterIP `:5006` — expose with Pangolin/Newt |
+| **linkwarden** | [Linkwarden](https://linkwarden.app) bookmark manager & archiver | ClusterIP `:3000` — expose with Pangolin/Newt |
 | **mealie** | [Mealie](https://mealie.io) recipe manager & meal planner | ClusterIP `:9000` — expose with Pangolin/Newt |
 | **vaultwarden** | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (Bitwarden-compatible) | ClusterIP `:80` (container listens on 8080) — expose with Pangolin/Newt; admin at `/admin` |
 | **newt** | [Newt](https://github.com/fosrl/newt) Pangolin tunnel client | Two sites (redundant), spread across nodes |
@@ -90,6 +91,23 @@ kubectl -n actual-budget get pods,svc,pvc
 # Local smoke test without Pangolin:
 kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
 # open http://127.0.0.1:5006
+```
+
+### Linkwarden
+
+- Image: `ghcr.io/linkwarden/linkwarden:v2.16.0`, plus per-namespace `postgres:18` and `getmeili/meilisearch:v1.12.8` (search backend; version pinned by Linkwarden's compose)
+- Data: Longhorn PVCs `linkwarden-data-encrypted` (**10Gi**, archives), `linkwarden-pgdata-encrypted` (**5Gi**), `linkwarden-meili-encrypted` (**2Gi**)
+- In-cluster URL: `http://linkwarden.linkwarden.svc.cluster.local:3000`
+- `NEXTAUTH_URL` (in the SOPS secret) is `https://links.thegriffiths.ca/api/v1/auth`; keep the host in sync with the Pangolin resource.
+- First run: registration is open — create your account, then set `NEXT_PUBLIC_DISABLE_REGISTRATION=true` in the deployment.
+- SSO (Pocket ID via the Authentik provider) is wired but disabled: register an OIDC client in Pocket ID (callback `https://links.thegriffiths.ca/api/v1/auth/callback/authentik`), put its id/secret in the SOPS secret, then flip `NEXT_PUBLIC_AUTHENTIK_ENABLED=true`.
+
+```bash
+kubectl -n linkwarden get pods,svc,pvc
+
+# Local smoke test without Pangolin:
+kubectl -n linkwarden port-forward svc/linkwarden 3000:3000
+# open http://127.0.0.1:3000
 ```
 
 ### Mealie

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: linkwarden-meili-encrypted
+  namespace: linkwarden
+  annotations:
+    # Never let Argo delete this PVC — the search index is rebuildable but a
+    # reindex means re-fetching every archived page's text.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 2Gi

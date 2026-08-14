@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: linkwarden-data-encrypted
+  namespace: linkwarden
+  annotations:
+    # Never let Argo delete this PVC (prune or app deletion) — archived pages,
+    # screenshots and PDFs live here.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 10Gi
