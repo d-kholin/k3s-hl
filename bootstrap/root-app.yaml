@@ -2,6 +2,13 @@
 # Apply once after Argo CD is up:
 #   kubectl apply -f bootstrap/root-app.yaml
 # Watches this repo and creates child Applications under infrastructure/ and apps/.
+#
+# ignoreDifferences: k8up-gui (and operators) temporarily clear
+# spec.syncPolicy.automated on child Applications during PVC restore so
+# selfHeal cannot fight scale-to-zero. Without this, root re-applies
+# automated from git within seconds. Also ignore the restore-gui pause
+# annotation so live restore state is not stripped on sync.
+# Re-apply this file after edits (root is not self-managed from a path here).
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -22,9 +29,17 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jqPathExpressions:
+        - .spec.syncPolicy.automated
+        - '.metadata.annotations."restore-gui.local/paused-state"'
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
