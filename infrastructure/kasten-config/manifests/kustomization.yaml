@@ -9,6 +9,7 @@ resources:
   - volumesnapshotclass.yaml
   - profile-garage.yaml
   - dashboard-sa.yaml
+  - networkpolicy.yaml
 
 generators:
   - ksops-generator.yaml

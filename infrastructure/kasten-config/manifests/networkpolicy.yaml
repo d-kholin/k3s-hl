@@ -1,0 +1,24 @@
+# Allow the Newt tunnel pods to reach the K10 dashboard gateway (Pangolin
+# exposure). The k10 chart ships its own NetworkPolicies for the namespace;
+# policies are additive, so this only opens newt -> gateway:8000 (the svc
+# targetPort behind gateway:80). Access control happens at the Pangolin
+# layer plus K10's own basic-auth login.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-newt-ingress-gateway
+  namespace: kasten-io
+spec:
+  podSelector:
+    matchLabels:
+      service: gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: newt
+      ports:
+        - protocol: TCP
+          port: 8000
