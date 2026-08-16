@@ -17,7 +17,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 ├── infrastructure/
 │   ├── argocd/                # Argo CD manages itself (install.yaml + KSOPS patch)
 │   ├── longhorn/              # Longhorn Helm
-│   ├── longhorn-config/       # Encrypted StorageClass, S3 backup target, RecurringJobs
+│   ├── longhorn-config/       # Encrypted StorageClass, S3 backup target, backup RecurringJobs
 │   ├── k8up/                  # K8up Helm (restic file/dump backups)
 │   ├── k8up-config/           # Global backend credentials (SOPS)
 │   ├── monitoring/            # kube-prometheus-stack Helm
@@ -34,7 +34,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 |-----------|---------|--------|
 | **argocd** | Argo CD manages itself | Stock `install.yaml` v3.5.0 + KSOPS repo-server patch; bootstrap via `kubectl apply -k` |
 | **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
-| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), snapshots + weekly/monthly S3 block backups |
+| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily/weekly/monthly S3 block backups (no local snapshot job) |
 | **k8up** | File/dump-level backups | Nightly restic backups per namespace to Garage; restorable per file from any tailnet machine ([docs/backups.md](docs/backups.md)) |
 | **k8up-config** | K8up credentials | One SOPS secret: S3 endpoint, Garage key, shared restic repo password |
 | **monitoring** | kube-prometheus-stack | Prometheus (14d), Alertmanager → email, Grafana (ClusterIP) |
@@ -57,9 +57,11 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
     `naku-k8up` bucket — file-level PVC backups plus `pg_dump` SQL for the
     Postgres apps. restic encrypts client-side; single files are restorable
     from any tailnet machine, cluster up or not.
-  - **Longhorn block (DR tier)**: local snapshots every 6h (retain 8) for
-    fast rollback, plus S3 block backups Saturday 04:30 (retain 5) and
-    monthly (retain 6) → whole-volume recovery points span ~6 months.
+  - **Longhorn block (DR tier)**: S3 block backups daily 03:00 (retain 7),
+    Saturday 04:30 (retain 5), and monthly (retain 6) → whole-volume recovery
+    points span ~6 months. No recurring *local-only* snapshots (they duplicate
+    K8up/Kasten and bloat busy volumes); backup tasks still use a short-lived
+    snap that Longhorn auto-cleans after upload.
 - **Disaster recovery**: full cluster-rebuild runbook in
   [docs/disaster-recovery.md](docs/disaster-recovery.md). Restoring backups
   needs the crypto passphrase → which needs an age private key from
@@ -256,6 +258,6 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 - [x] **Argo CD ↔ git access**: public HTTPS, no credentials required.
 - [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
 - [x] **SOPS in Argo**: KSOPS plugin + `sops-age` secret — now GitOps-managed (`infrastructure/argocd`); `sops-age` itself stays manual by design.
-- [x] **Backup target**: Garage bucket + credentials configured; daily/weekly/monthly backups + 6h snapshots scheduled.
+- [x] **Backup target**: Garage bucket + credentials configured; daily/weekly/monthly S3 block backups scheduled (no local-only snapshot job).
 - [x] **Volumes on `longhorn-encrypted`** — apps use encrypted PVCs.
 

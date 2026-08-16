@@ -1,28 +1,15 @@
-# Recurring snapshots + tiered backups for all Longhorn volumes.
-# Group "default" applies to every volume that has no explicit recurring-job
-# groups of its own.
+# Tiered Longhorn → Garage S3 *block* backups for volumes in group "default"
+# (every volume with no explicit recurring-job groups of its own).
 #
-# Tiers (backups are incremental per volume — shared blocks are stored once,
-# so the weekly/monthly tiers add little space):
-#   snapshot-6h     local snapshots every 6h, retain 8  (~2 days of fast,
-#                   in-cluster rollback points; no S3 involved)
+# Local snapshot-only jobs are intentionally NOT used: they burn disk on busy
+# volumes (e.g. Prometheus TSDB) and duplicate the K8up file/dump tier plus
+# Kasten CSI snapshots. Backup tasks still take a short-lived local snap as
+# part of the upload; auto-cleanup-recurring-job-backup-snapshot removes it.
+#
+# Tiers (backups are incremental per volume — shared blocks stored once):
 #   backup-daily    03:00 daily,        retain 7   (~1 week)
 #   backup-weekly   04:30 Saturday,     retain 5   (~1 month)
 #   backup-monthly  06:00 1st of month, retain 6   (~6 months)
-apiVersion: longhorn.io/v1beta2
-kind: RecurringJob
-metadata:
-  name: snapshot-6h
-  namespace: longhorn-system
-spec:
-  name: snapshot-6h
-  task: snapshot
-  cron: "0 */6 * * *"
-  groups:
-    - default
-  retain: 8
-  concurrency: 2
----
 apiVersion: longhorn.io/v1beta2
 kind: RecurringJob
 metadata:

@@ -3,7 +3,7 @@
 | Tier | Tool | Cadence | What it's for |
 |------|------|---------|---------------|
 | File / dump level | **K8up + restic** → `naku-k8up` Garage bucket | nightly (`@daily-random`) | The usable tier: browse and restore single files or plain-SQL database dumps, from any tailnet machine, even with the cluster down |
-| Block level | **Longhorn** → `naku-longhorn` Garage bucket | weekly Sat 04:30 + monthly (plus local snapshots every 6h) | Whole-volume disaster recovery (see [disaster-recovery.md](disaster-recovery.md)) |
+| Block level | **Longhorn** → `naku-longhorn` Garage bucket | daily 03:00 + weekly Sat 04:30 + monthly (no local-only snapshot job) | Whole-volume disaster recovery (see [disaster-recovery.md](disaster-recovery.md)) |
 
 Both tiers store only ciphertext in Garage: Longhorn backups are dm-crypt
 volumes, and restic encrypts everything client-side with the repository
@@ -30,8 +30,8 @@ password before upload (Garage-side encryption support is irrelevant).
 - **Consistency caveat**: vaultwarden, actual-budget, lubelogger, and
   teslamate's Grafana keep SQLite/LiteDB files that are backed up live
   (their images ship no dump CLI). WAL journaling makes a torn copy unlikely
-  but not impossible — the 6-hourly Longhorn snapshots and weekly block
-  backups are the point-in-time net for those.
+  but not impossible — Longhorn S3 block backups (daily+) are the
+  point-in-time net for those.
 
 ### Adding a new app to backups
 
