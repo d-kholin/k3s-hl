@@ -11,6 +11,7 @@ resources:
   - dashboard-sa.yaml
   - networkpolicy.yaml
   - kanister-pv-reclaim.yaml
+  - argo-sync-hooks.yaml
 
 generators:
   - ksops-generator.yaml

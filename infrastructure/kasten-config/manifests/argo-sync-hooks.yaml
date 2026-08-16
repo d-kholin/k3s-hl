@@ -1,0 +1,93 @@
+# Kanister Blueprint + RBAC so K10 restores handle the Argo CD pause dance
+# themselves (see scripts/k10-restore-inplace.sh for the manual variant and
+# docs of WHY: selfHeal reverts K10's scale-down/PVC-recreate mid-restore).
+#
+# In the K10 restore dialog, under Execution Hooks select blueprint
+# argo-sync-hooks with: preHook=pauseArgoSync, onSuccess=resumeArgoSync,
+# onFailure=resumeArgoSync (onFailure matters — without it a failed restore
+# leaves auto-sync off cluster-wide).
+#
+# Assumes Argo app name == app namespace (repo convention). Namespaces with
+# no matching Argo Application (e.g. restore-test targets) are skipped, so
+# selecting the hooks is always safe. Caveat: concurrent hooked restores
+# share the root app pause — the first to finish re-enables root sync.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-sync-hooks
+  namespace: kasten-io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-sync-hooks
+rules:
+  - apiGroups: [argoproj.io]
+    resources: [applications]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-sync-hooks
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-sync-hooks
+subjects:
+  - kind: ServiceAccount
+    name: argo-sync-hooks
+    namespace: kasten-io
+---
+apiVersion: cr.kanister.io/v1alpha1
+kind: Blueprint
+metadata:
+  name: argo-sync-hooks
+  namespace: kasten-io
+actions:
+  pauseArgoSync:
+    phases:
+      - func: KubeTask
+        name: pauseArgoSync
+        args:
+          namespace: kasten-io
+          image: docker.io/alpine/kubectl:1.36.3
+          podOverride:
+            serviceAccountName: argo-sync-hooks
+          command:
+            - sh
+            - -ec
+            - |
+              APP="{{ .Namespace.Name }}"
+              if ! kubectl -n argocd get applications.argoproj.io "$APP" >/dev/null 2>&1; then
+                echo "no Argo application '$APP' — nothing to pause"
+                exit 0
+              fi
+              echo "pausing auto-sync: root, then $APP"
+              kubectl -n argocd patch applications.argoproj.io root --type merge \
+                -p '{"spec":{"syncPolicy":{"automated":null}}}'
+              kubectl -n argocd patch applications.argoproj.io "$APP" --type merge \
+                -p '{"spec":{"syncPolicy":{"automated":null}}}'
+  resumeArgoSync:
+    phases:
+      - func: KubeTask
+        name: resumeArgoSync
+        args:
+          namespace: kasten-io
+          image: docker.io/alpine/kubectl:1.36.3
+          podOverride:
+            serviceAccountName: argo-sync-hooks
+          command:
+            - sh
+            - -ec
+            - |
+              APP="{{ .Namespace.Name }}"
+              if ! kubectl -n argocd get applications.argoproj.io "$APP" >/dev/null 2>&1; then
+                echo "no Argo application '$APP' — nothing to resume"
+                exit 0
+              fi
+              echo "resuming auto-sync: $APP, then root"
+              kubectl -n argocd patch applications.argoproj.io "$APP" --type merge \
+                -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
+              kubectl -n argocd patch applications.argoproj.io root --type merge \
+                -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
