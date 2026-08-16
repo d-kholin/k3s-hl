@@ -58,10 +58,16 @@ actions:
             - sh
             - -ec
             - |
+              # .Namespace.Name is empty in plain-Kanister ActionSets; K10
+              # hook contexts populate it. Fall back to the subject's name.
               APP="{{ .Namespace.Name }}"
-              if ! kubectl -n argocd get applications.argoproj.io "$APP" >/dev/null 2>&1; then
-                echo "no Argo application '$APP' — nothing to pause"
-                exit 0
+              case "$APP" in ""|"<no value>") APP="{{ .Object.metadata.name }}" ;; esac
+              case "$APP" in ""|"<no value>") echo "cannot determine app from action context"; exit 1 ;; esac
+              if ! OUT=$(kubectl -n argocd get applications.argoproj.io "$APP" 2>&1); then
+                case "$OUT" in *ot\ found*)
+                  echo "no Argo application '$APP' — nothing to pause"; exit 0 ;;
+                esac
+                echo "$OUT"; exit 1
               fi
               echo "pausing auto-sync: root, then $APP"
               kubectl -n argocd patch applications.argoproj.io root --type merge \
@@ -81,10 +87,15 @@ actions:
             - sh
             - -ec
             - |
+              # Same app-name resolution as pauseArgoSync.
               APP="{{ .Namespace.Name }}"
-              if ! kubectl -n argocd get applications.argoproj.io "$APP" >/dev/null 2>&1; then
-                echo "no Argo application '$APP' — nothing to resume"
-                exit 0
+              case "$APP" in ""|"<no value>") APP="{{ .Object.metadata.name }}" ;; esac
+              case "$APP" in ""|"<no value>") echo "cannot determine app from action context"; exit 1 ;; esac
+              if ! OUT=$(kubectl -n argocd get applications.argoproj.io "$APP" 2>&1); then
+                case "$OUT" in *ot\ found*)
+                  echo "no Argo application '$APP' — nothing to resume"; exit 0 ;;
+                esac
+                echo "$OUT"; exit 1
               fi
               echo "resuming auto-sync: $APP, then root"
               kubectl -n argocd patch applications.argoproj.io "$APP" --type merge \
