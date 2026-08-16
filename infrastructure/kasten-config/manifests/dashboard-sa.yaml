@@ -1,0 +1,22 @@
+# ServiceAccount for K10 dashboard token auth (the chart binds k10-admin
+# only to the k10:admins group and creates no user-facing SA). Mint a
+# short-lived login token with:
+#   nix run nixpkgs#kubectl -- -n kasten-io create token k10-dashboard --duration=24h
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k10-dashboard
+  namespace: kasten-io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k10-dashboard-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: k10-admin
+subjects:
+  - kind: ServiceAccount
+    name: k10-dashboard
+    namespace: kasten-io

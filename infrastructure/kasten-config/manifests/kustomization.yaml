@@ -8,6 +8,7 @@ kind: Kustomization
 resources:
   - volumesnapshotclass.yaml
   - profile-garage.yaml
+  - dashboard-sa.yaml
 
 generators:
   - ksops-generator.yaml
