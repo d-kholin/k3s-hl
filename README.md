@@ -20,8 +20,8 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 │   ├── longhorn-config/       # Encrypted StorageClass, S3 backup target, backup RecurringJobs
 │   ├── k8up/                  # K8up Helm (restic file/dump backups)
 │   ├── k8up-config/           # Global backend credentials (SOPS)
-│   ├── monitoring/            # kube-prometheus-stack Helm
-│   └── monitoring-config/     # Alertmanager email (SOPS), Longhorn + K8up alerts
+│   ├── monitoring/            # kube-prometheus-stack (DISABLED — not in app-of-apps)
+│   └── monitoring-config/     # Alertmanager/rules (DISABLED — not in app-of-apps)
 └── apps/
     ├── actual-budget/         # Actual Budget (personal finance)
     ├── newt/                  # Pangolin tunnel client (two redundant sites)
@@ -37,8 +37,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 | **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily/weekly/monthly S3 block backups (no local snapshot job) |
 | **k8up** | File/dump-level backups | Nightly restic backups per namespace to Garage; restorable per file from any tailnet machine ([docs/backups.md](docs/backups.md)) |
 | **k8up-config** | K8up credentials | One SOPS secret: S3 endpoint, Garage key, shared restic repo password |
-| **monitoring** | kube-prometheus-stack | Prometheus (14d), Alertmanager → email, Grafana (ClusterIP) |
-| **monitoring-config** | Alerting config | Alertmanager SMTP/email (SOPS), Longhorn + K8up scrape + alert rules |
+| **monitoring** *(disabled)* | kube-prometheus-stack | Manifests kept under `infrastructure/monitoring{,-config}/` but **not** listed in `infrastructure/kustomization.yaml` (was too heavy: ~1.7 Gi Prometheus + 20 Gi PVC). Re-enable by restoring those two resource lines. |
 | **coredns-custom** | Cluster DNS overrides | Pins `garage.nakunga.com` (S3 backup target, Tailscale-only) for pods |
 
 ### Volume encryption & backups
@@ -188,20 +187,19 @@ Rebuilding with data restore: follow [docs/disaster-recovery.md](docs/disaster-r
 
 ### Monitoring & email alerts
 
-kube-prometheus-stack with Longhorn rules (volume degraded/faulted, block
-backup older than 8 days, volume never backed up, Longhorn node unready,
-disk >85%) and K8up rules (last job failed, no successful backup in 26h).
-Alertmanager emails them; SMTP host/credentials and the destination address
-live encrypted in git — fill them in with:
+**Currently disabled** (not deployed via app-of-apps — CPU/RAM/disk). Manifests and
+SOPS secrets remain in git under `infrastructure/monitoring/` and
+`monitoring-config/`. To bring the stack back, re-add to
+`infrastructure/kustomization.yaml`:
 
-```bash
-sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml
-
-# UIs (ClusterIP only):
-kubectl -n monitoring port-forward svc/monitoring-grafana 3000:80        # user admin; password: sops -d --extract '["stringData"]["admin-password"]' infrastructure/monitoring-config/manifests/grafana-admin.sops.yaml
-kubectl -n monitoring port-forward svc/monitoring-kube-prometheus-alertmanager 9093:9093
+```yaml
+  - monitoring/application.yaml
+  - monitoring-config/application.yaml
 ```
 
+When enabled: kube-prometheus-stack with Longhorn + K8up alert rules; Alertmanager
+SMTP config via SOPS (`alertmanager-config.sops.yaml`); Grafana admin secret in
+`grafana-admin.sops.yaml`.
 ### Verify
 
 ```bash
@@ -247,9 +245,8 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 
 ## Open items / reminders
 
-- [ ] **Alertmanager SMTP**: fill real credentials + destination address:
-  `sops infrastructure/monitoring-config/manifests/alertmanager-config.sops.yaml`
-  (placeholders until then — no emails will send).
+- [ ] **Monitoring stack** — disabled in app-of-apps; re-enable when resources allow.
+  SMTP still in `monitoring-config` SOPS if you bring it back.
 - [ ] **Test-restore a backup quarterly** — see docs/disaster-recovery.md "Ongoing hygiene".
 - [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget, Vaultwarden).
 - [ ] Chart pins today: Longhorn `1.12.0`, kube-prometheus-stack `88.2.0`, Argo CD `v3.5.0` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.

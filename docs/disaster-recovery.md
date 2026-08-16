@@ -65,7 +65,7 @@ Longhorn first-install note: the chart's pre-upgrade Job is a PreSync hook
 that needs a Sync-phase ServiceAccount — on a brand-new cluster sync the
 longhorn app once with skip-hooks/apply-only (see
 `infrastructure/longhorn/application.yaml`). Wait until `longhorn`,
-`longhorn-config`, `monitoring` and `coredns-custom` are Synced/Healthy.
+`longhorn-config`, and `coredns-custom` are Synced/Healthy.
 
 ### 5. Restore volumes from backup
 

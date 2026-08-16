@@ -132,7 +132,6 @@ into `global-secret.sops.yaml`; repos are auto-initialized on first backup.
 
 ## Monitoring
 
-`monitoring-config` scrapes the operator and alerts on `K8upLastJobFailed`
-(a schedule's most recent job failed) and `K8upBackupStale` (no successful
-backup in a namespace for >26h). Longhorn's backup-age alerts now expect the
-weekly cadence (>8 days).
+Optional kube-prometheus-stack + `monitoring-config` (K8up/Longhorn rules) is
+**not deployed** right now — see README. Re-enable via
+`infrastructure/kustomization.yaml` when you want cluster metrics/alerts again.
