@@ -20,3 +20,20 @@ subjects:
   - kind: ServiceAccount
     name: k10-dashboard
     namespace: kasten-io
+---
+# k10-admin only covers the K10 API groups; the dashboard's system health
+# page also lists core resources (deployments) as the logged-in user.
+# Namespace-scoped read-only view, kasten-io only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: k10-dashboard-view
+  namespace: kasten-io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: k10-dashboard
+    namespace: kasten-io
