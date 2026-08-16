@@ -1,0 +1,22 @@
+# Cluster-wide default VolumeSnapshotClass for the Longhorn CSI driver.
+# Lives in kasten-config because it exists for the K10 evaluation — remove
+# with the kasten apps if the evaluation ends. Note: once this exists, any
+# future workload creating VolumeSnapshots will default to this class.
+#
+# type snap = local Longhorn snapshot (fast, on-replica); off-cluster
+# durability comes from K10's export-to-Garage, NOT from these snapshots.
+# type bak would route every snapshot through Longhorn's own backup target,
+# entangling the evaluation with the production Longhorn backup stack.
+# deletionPolicy Delete: K10 retires snapshots per policy retention —
+# Retain would leak a Longhorn snapshot on every retirement.
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: longhorn-snap
+  annotations:
+    snapshot.storage.kubernetes.io/is-default-class: "true"
+    k10.kasten.io/is-snapshot-class: "true"
+driver: driver.longhorn.io
+deletionPolicy: Delete
+parameters:
+  type: snap

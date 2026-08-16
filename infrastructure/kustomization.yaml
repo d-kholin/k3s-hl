@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   - argocd/application.yaml
+  - snapshot-controller/application.yaml
   - longhorn/application.yaml
   - longhorn-config/application.yaml
   - coredns-custom/application.yaml
@@ -13,3 +14,5 @@ resources:
   - k8up-config/application.yaml
   - monitoring/application.yaml
   - monitoring-config/application.yaml
+  - kasten/application.yaml
+  - kasten-config/application.yaml

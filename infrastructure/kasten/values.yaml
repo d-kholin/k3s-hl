@@ -1,0 +1,18 @@
+# K10 evaluation values. Token auth only — no ingress; access the dashboard
+# with:
+#   kubectl -n kasten-io create token k10-k10 --duration=24h
+#   kubectl -n kasten-io port-forward svc/gateway 8080:80
+#   http://127.0.0.1:8080/k10/#/
+#
+# PVCs are pinned to longhorn-encrypted (the current default StorageClass)
+# so a future default-SC change can't silently move the catalog. Defaults
+# request ~70Gi across catalog/jobs/logging/prometheus PVCs — Longhorn
+# thin-provisions, so real usage stays small; shrink global.persistence.size
+# only if over-provisioning alarms fire.
+auth:
+  tokenAuth:
+    enabled: true
+
+global:
+  persistence:
+    storageClass: longhorn-encrypted

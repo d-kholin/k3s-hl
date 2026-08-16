@@ -1,0 +1,50 @@
+# Veeam Kasten K10 (Helm): CSI-snapshot-based backup with export to the
+# Garage S3 target. EVALUATION running alongside k8up and the Longhorn
+# recurring jobs — neither is replaced or modified (see docs/backups.md for
+# the existing two-tier model). Free tier (<=5 nodes). No ingress: dashboard
+# is kubectl port-forward svc/gateway + token auth only.
+#
+# Wave 1 with the other operators. Depends on snapshot-controller (wave 0)
+# for the VolumeSnapshot CRDs, and on kasten-config (wave 2) for the
+# VolumeSnapshotClass and the Garage location Profile. K10 creates its own
+# CRDs (Profile/Policy) at runtime, not via the chart.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kasten
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.kasten.io/
+      chart: k10
+      targetRevision: 9.0.3
+      helm:
+        releaseName: k10
+        valueFiles:
+          - $values/infrastructure/kasten/values.yaml
+    - repoURL: https://github.com/d-kholin/k3s-hl.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kasten-io
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

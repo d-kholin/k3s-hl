@@ -1,0 +1,13 @@
+# Kasten evaluation config: default VolumeSnapshotClass (cluster-scoped, so
+# no namespace: field here), Garage S3 credentials via KSOPS, and the K10
+# location Profile for exports.
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - volumesnapshotclass.yaml
+  - profile-garage.yaml
+
+generators:
+  - ksops-generator.yaml

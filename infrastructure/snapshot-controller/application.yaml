@@ -1,0 +1,49 @@
+# CSI external-snapshotter: VolumeSnapshot CRDs + snapshot-controller.
+# k3s ships neither, and the Longhorn chart only ships the csi-snapshotter
+# sidecar — without this, VolumeSnapshot objects are never reconciled.
+# Added as a Kasten K10 prerequisite, but it's generic storage plumbing any
+# future CSI snapshot consumer can use.
+#
+# Wave 0: kasten (wave 1) and the VolumeSnapshotClass in kasten-config
+# (wave 2) depend on the CRDs. The chart renders CRDs as normal templates
+# (installCRDs default true), so Argo upgrades them like any resource.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: snapshot-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://piraeus.io/helm-charts/
+      chart: snapshot-controller
+      targetRevision: 5.2.0
+      helm:
+        releaseName: snapshot-controller
+        valueFiles:
+          - $values/infrastructure/snapshot-controller/values.yaml
+    - repoURL: https://github.com/d-kholin/k3s-hl.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
