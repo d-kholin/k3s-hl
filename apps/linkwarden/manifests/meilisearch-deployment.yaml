@@ -42,6 +42,10 @@ spec:
           env:
             - name: MEILI_ENV
               value: production
+            # Migrate the on-disk database when the engine version changes;
+            # without this Meilisearch refuses to start after image bumps.
+            - name: MEILI_UPGRADE_DB
+              value: "true"
             - name: MEILI_NO_ANALYTICS
               value: "true"
             - name: MEILI_MASTER_KEY
