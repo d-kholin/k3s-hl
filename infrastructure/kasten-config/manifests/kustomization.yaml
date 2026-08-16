@@ -10,6 +10,7 @@ resources:
   - profile-garage.yaml
   - dashboard-sa.yaml
   - networkpolicy.yaml
+  - kanister-pv-reclaim.yaml
 
 generators:
   - ksops-generator.yaml
