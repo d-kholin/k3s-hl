@@ -60,7 +60,9 @@ spec:
           restartPolicy: Never
           containers:
             - name: reclaim
-              image: docker.io/rancher/kubectl:v1.36.2
+              # alpine/kubectl, not rancher/kubectl: the latter ships no
+              # shell and this job is a shell script.
+              image: docker.io/alpine/kubectl:1.36.3
               command:
                 - /bin/sh
                 - -ec
