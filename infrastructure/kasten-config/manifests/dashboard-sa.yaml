@@ -21,6 +21,38 @@ subjects:
     name: k10-dashboard
     namespace: kasten-io
 ---
+# Enabling K10 Disaster Recovery from the dashboard gets/creates the
+# k10-dr-secret Secret as the logged-in user, which neither k10-admin nor
+# view allow. create can't be name-restricted in RBAC; read/write is
+# limited to k10-dr-secret so the SA can't read e.g. the Garage creds.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: k10-dashboard-dr-secret
+  namespace: kasten-io
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [k10-dr-secret]
+    verbs: [get, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: k10-dashboard-dr-secret
+  namespace: kasten-io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: k10-dashboard-dr-secret
+subjects:
+  - kind: ServiceAccount
+    name: k10-dashboard
+    namespace: kasten-io
+---
 # k10-admin only covers the K10 API groups; the dashboard's system health
 # page also lists core resources (deployments) as the logged-in user.
 # Namespace-scoped read-only view, kasten-io only.
