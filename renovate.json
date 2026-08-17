@@ -8,6 +8,18 @@
   "argocd": {
     "managerFilePatterns": ["/(^|/)application\\.ya?ml$/"]
   },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Argo CD is installed from a pinned raw install.yaml URL, which no built-in manager parses",
+      "managerFilePatterns": ["/^infrastructure/argocd/manifests/kustomization\\.ya?ml$/"],
+      "matchStrings": [
+        "https://raw\\.githubusercontent\\.com/argoproj/argo-cd/(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)/manifests/install\\.yaml"
+      ],
+      "depNameTemplate": "argoproj/argo-cd",
+      "datasourceTemplate": "github-releases"
+    }
+  ],
   "packageRules": [
     {
       "description": "Longhorn supports upgrading one minor at a time only — open a PR per minor step",
