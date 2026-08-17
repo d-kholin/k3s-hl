@@ -12,6 +12,3 @@ labels:
       app.kubernetes.io/name: k8up-btl
       app.kubernetes.io/part-of: k8up-btl
     includeSelectors: false
-images:
-  - name: ghcr.io/d-kholin/k8up-btl
-    newTag: "1.3.0"
