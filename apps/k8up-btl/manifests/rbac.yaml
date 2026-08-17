@@ -43,6 +43,11 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets"]
     verbs: ["get", "list", "watch", "patch", "update"]
+  # Pod -> Deployment owner resolution walks through the ReplicaSet; without
+  # this, SQL recovery cannot identify (and exclude) the DB's own workload.
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
   - apiGroups: [""]
     resources: ["pods", "persistentvolumeclaims"]
     verbs: ["get", "list", "watch"]
