@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   - storageclass.yaml
+  - local-path-storageclass.yaml
   - recurringjob.yaml
 
 generators:

@@ -1,0 +1,15 @@
+# k3s ships local-path as a default StorageClass, which competed with
+# longhorn-encrypted (two defaults → Kubernetes picks the newest, fragile).
+# This adopts the annotation and pins it false; spec fields mirror the k3s
+# addon exactly (they are immutable) so the only enforced change is the
+# annotation. If a k3s upgrade re-applies the addon default, Argo selfHeal
+# flips it back off.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-path
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
