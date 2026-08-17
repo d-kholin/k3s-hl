@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8up-gui
+  namespace: k8up-gui
+  labels:
+    app: k8up-gui
+    app.kubernetes.io/name: k8up-gui
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: k8up-gui
+      app.kubernetes.io/name: k8up-gui
+  template:
+    metadata:
+      labels:
+        app: k8up-gui
+        app.kubernetes.io/name: k8up-gui
+    spec:
+      serviceAccountName: k8up-gui
+      securityContext:
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gui
+          image: ghcr.io/d-kholin/k8up-btl:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: HTTP_ADDR
+              value: ":8080"
+            - name: ARGOCD_NAMESPACE
+              value: argocd
+            - name: AUDIT_DB_PATH
+              value: /data/audit.db
+            - name: STATIC_DIR
+              value: /app/static
+            - name: RESTIC_BINARY
+              value: /app/restic
+            - name: SSL_CERT_FILE
+              value: /etc/ssl/certs/ca-certificates.crt
+            - name: K8UP_GLOBAL_SECRET_NAMESPACE
+              value: k8up
+            - name: K8UP_GLOBAL_SECRET_NAME
+              value: k8up-global
+            - name: AUTH_DEFAULT_USER
+              value: operator
+            # No in-app auth. Pangolin/Newt NetworkPolicy is the gate.
+            # Optional identity headers only enrich audit logs if present.
+            # Never set DEV_AUTH_USER in cluster.
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: k8up-gui-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8up-gui
+  namespace: k8up-gui
+  labels:
+    app: k8up-gui
+    app.kubernetes.io/name: k8up-gui
+spec:
+  type: ClusterIP
+  selector:
+    app: k8up-gui
+    app.kubernetes.io/name: k8up-gui
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

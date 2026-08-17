@@ -1,0 +1,34 @@
+# Argo CD Application for k8up btl (K8up backup/restore GUI).
+# Image: ghcr.io/d-kholin/k8up-btl (upstream d-kholin/k8up-btl).
+# Workload path: apps/k8up-gui/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8up-gui
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/k8up-gui/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: k8up-gui
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # ClusterRole + K8up/Argo CRDs — skip dry-run + retry on first sync.
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
