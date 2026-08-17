@@ -1,11 +1,11 @@
 # Argo CD Application for k8up btl (K8up backup/restore GUI).
 # Image: ghcr.io/d-kholin/k8up-btl (upstream d-kholin/k8up-btl).
-# Workload path: apps/k8up-gui/manifests
+# Workload path: apps/k8up-btl/manifests
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: k8up-gui
+  name: k8up-btl
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -14,10 +14,10 @@ spec:
   source:
     repoURL: https://github.com/d-kholin/k3s-hl.git
     targetRevision: HEAD
-    path: apps/k8up-gui/manifests
+    path: apps/k8up-btl/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: k8up-gui
+    namespace: k8up-btl
   syncPolicy:
     automated:
       prune: true

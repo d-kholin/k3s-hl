@@ -3,7 +3,7 @@
 #   kubectl apply -f bootstrap/root-app.yaml
 # Watches this repo and creates child Applications under infrastructure/ and apps/.
 #
-# ignoreDifferences: k8up-gui (and operators) temporarily clear
+# ignoreDifferences: k8up-btl (and operators) temporarily clear
 # spec.syncPolicy.automated on child Applications during PVC restore so
 # selfHeal cannot fight scale-to-zero. Without this, root re-applies
 # automated from git within seconds. Also ignore the restore-gui pause

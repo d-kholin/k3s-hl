@@ -4,7 +4,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-ingress
-  namespace: k8up-gui
+  namespace: k8up-btl
 spec:
   podSelector: {}
   policyTypes:
@@ -14,11 +14,11 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-newt-ingress
-  namespace: k8up-gui
+  namespace: k8up-btl
 spec:
   podSelector:
     matchLabels:
-      app: k8up-gui
+      app: k8up-btl
   policyTypes:
     - Ingress
   ingress:

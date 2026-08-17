@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: k8up-gui-data
-  namespace: k8up-gui
+  name: k8up-btl-data
+  namespace: k8up-btl
   labels:
-    app.kubernetes.io/name: k8up-gui
+    app.kubernetes.io/name: k8up-btl
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
