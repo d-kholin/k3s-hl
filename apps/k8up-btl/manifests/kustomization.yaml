@@ -1,14 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: k8up-btl
+# Remote base: manifests live in the k8up-btl repo and arrive pinned to a
+# release, so RBAC/env changes ship with every version bump. Renovate bumps
+# both the ?ref= and the image tag (kustomize manager).
 resources:
-  - namespace.yaml
-  - rbac.yaml
-  - pvc.yaml
-  - deployment.yaml
-  - networkpolicy.yaml
-labels:
-  - pairs:
-      app.kubernetes.io/name: k8up-btl
-      app.kubernetes.io/part-of: k8up-btl
-    includeSelectors: false
+  - https://github.com/d-kholin/k8up-btl//deploy/k8s?ref=v1.8.0
+images:
+  - name: ghcr.io/d-kholin/k8up-btl
+    newTag: "1.8.0"
