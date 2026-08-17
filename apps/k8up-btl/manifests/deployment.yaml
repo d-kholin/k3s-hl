@@ -55,8 +55,8 @@ spec:
             # No in-app auth. Pangolin/Newt NetworkPolicy is the gate.
             # Optional identity headers only enrich audit logs if present.
             # Never set DEV_AUTH_USER in cluster.
-          # /readyz (>=1.5.0) is 503 until the Kubernetes API is reachable;
-          # /healthz stays 200 while the process runs.
+          # /readyz is 503 until the Kubernetes API is reachable; /healthz stays
+          # 200 while the process runs (degraded mode is reported in the body).
           readinessProbe:
             httpGet:
               path: /readyz

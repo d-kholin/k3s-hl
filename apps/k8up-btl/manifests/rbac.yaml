@@ -28,15 +28,15 @@ rules:
   - apiGroups: ["k8up.io"]
     resources: ["restores", "backups", "checks"]
     verbs: ["create"]
-  # Cancelling an in-flight GUI restore (>=1.5.0) deletes its Restore CR
-  # (cascades to the Job via owner references).
+  # Cancelling an in-flight GUI restore deletes its Restore CR, and aborting a
+  # recovery deletes its unfinished safety Backup CR (both cascade to Jobs).
   - apiGroups: ["k8up.io"]
-    resources: ["restores"]
+    resources: ["restores", "backups"]
     verbs: ["delete"]
-  # SQL dump recovery (>=1.6.0) pipes `restic dump` into the DB pod's
-  # git-declared restore command (k8up-btl.local/restore-command annotation)
-  # via exec. Real privilege: exec into any pod. Accepted for this
-  # single-operator tool behind SSO.
+  # SQL dump recovery pipes `restic dump` into the DB pod's git-declared
+  # restore command (k8up-btl.local/restore-command annotation) via exec.
+  # This is a real privilege: exec into any pod. Acceptable for a
+  # single-operator tool behind SSO; see docs/deploy.md.
   - apiGroups: [""]
     resources: ["pods/exec"]
     verbs: ["create"]

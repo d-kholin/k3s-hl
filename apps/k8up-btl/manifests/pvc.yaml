@@ -10,7 +10,8 @@ metadata:
     argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: ["ReadWriteOnce"]
-  storageClassName: longhorn
+  # Uses the cluster's default StorageClass. Pin one explicitly if needed:
+  # storageClassName: longhorn
   resources:
     requests:
       storage: 1Gi
