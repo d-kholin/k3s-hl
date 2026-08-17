@@ -26,12 +26,6 @@
       "matchDatasources": ["helm"],
       "matchPackageNames": ["longhorn"],
       "separateMultipleMinor": true
-    },
-    {
-      "description": "k8up-btl is under active development — don't serve stale GHCR tag lists when a release lands minutes before a run",
-      "matchDatasources": ["docker"],
-      "matchPackageNames": ["ghcr.io/d-kholin/k8up-btl"],
-      "cacheTtlOverride": 1
     }
   ]
 }
