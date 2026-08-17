@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8up-gui
-  namespace: k8up-gui
+  name: k8up-btl
+  namespace: k8up-btl
   labels:
-    app: k8up-gui
-    app.kubernetes.io/name: k8up-gui
+    app: k8up-btl
+    app.kubernetes.io/name: k8up-btl
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: k8up-gui
-      app.kubernetes.io/name: k8up-gui
+      app: k8up-btl
+      app.kubernetes.io/name: k8up-btl
   template:
     metadata:
       labels:
-        app: k8up-gui
-        app.kubernetes.io/name: k8up-gui
+        app: k8up-btl
+        app.kubernetes.io/name: k8up-btl
     spec:
-      serviceAccountName: k8up-gui
+      serviceAccountName: k8up-btl
       # Drop when ghcr.io/d-kholin/k8up-btl is public.
       imagePullSecrets:
         - name: ghcr-pull
@@ -30,7 +30,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: gui
+        - name: btl
           image: ghcr.io/d-kholin/k8up-btl:1.0.0
           imagePullPolicy: IfNotPresent
           ports:
@@ -91,21 +91,21 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: k8up-gui-data
+            claimName: k8up-btl-data
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: k8up-gui
-  namespace: k8up-gui
+  name: k8up-btl
+  namespace: k8up-btl
   labels:
-    app: k8up-gui
-    app.kubernetes.io/name: k8up-gui
+    app: k8up-btl
+    app.kubernetes.io/name: k8up-btl
 spec:
   type: ClusterIP
   selector:
-    app: k8up-gui
-    app.kubernetes.io/name: k8up-gui
+    app: k8up-btl
+    app.kubernetes.io/name: k8up-btl
   ports:
     - name: http
       port: 80
