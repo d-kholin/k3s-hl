@@ -22,7 +22,7 @@ spec:
         # repo as /mealie-postgres.sql (db name = user name; POSTGRES_DB is
         # unset). Restore via `restic dump ... | psql` — the Restore CRD can't
         # restore stdin-based snapshots. See docs/backups.md.
-        k8up.io/backupcommand: sh -c 'PGDATABASE="$POSTGRES_USER" PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean'
+        k8up.io/backupcommand: sh -c 'PGDATABASE="$POSTGRES_USER" PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean --if-exists'
         k8up.io/file-extension: .sql
     spec:
       # Restricted PSA compliant. The official postgres image normally starts
