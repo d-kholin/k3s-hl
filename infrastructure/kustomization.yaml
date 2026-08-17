@@ -14,5 +14,3 @@ resources:
   - k8up-config/application.yaml
   # monitoring + monitoring-config disabled (resource weight); manifests kept
   # under infrastructure/monitoring{,-config}/ — re-add these two lines to restore.
-  - kasten/application.yaml
-  - kasten-config/application.yaml

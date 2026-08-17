@@ -26,12 +26,6 @@
       "matchDatasources": ["helm"],
       "matchPackageNames": ["longhorn"],
       "separateMultipleMinor": true
-    },
-    {
-      "description": "Kasten K10 releases monthly and large version jumps are unsupported — open a PR per minor step",
-      "matchDatasources": ["helm"],
-      "matchPackageNames": ["k10"],
-      "separateMultipleMinor": true
     }
   ]
 }

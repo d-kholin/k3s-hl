@@ -1,12 +1,12 @@
 # CSI external-snapshotter: VolumeSnapshot CRDs + snapshot-controller.
 # k3s ships neither, and the Longhorn chart only ships the csi-snapshotter
 # sidecar — without this, VolumeSnapshot objects are never reconciled.
-# Added as a Kasten K10 prerequisite, but it's generic storage plumbing any
-# future CSI snapshot consumer can use.
+# Generic storage plumbing kept for any future CSI snapshot consumer
+# (originally added for the Kasten K10 evaluation, since removed).
 #
-# Wave 0: kasten (wave 1) and the VolumeSnapshotClass in kasten-config
-# (wave 2) depend on the CRDs. The chart renders CRDs as normal templates
-# (installCRDs default true), so Argo upgrades them like any resource.
+# Wave 0: anything consuming VolumeSnapshots depends on the CRDs. The chart
+# renders CRDs as normal templates (installCRDs default true), so Argo
+# upgrades them like any resource.
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application

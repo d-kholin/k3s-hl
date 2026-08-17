@@ -59,7 +59,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
   - **Longhorn block (DR tier)**: S3 block backups daily 03:00 (retain 7),
     Saturday 04:30 (retain 5), and monthly (retain 6) → whole-volume recovery
     points span ~6 months. No recurring *local-only* snapshots (they duplicate
-    K8up/Kasten and bloat busy volumes); backup tasks still use a short-lived
+    K8up and bloat busy volumes); backup tasks still use a short-lived
     snap that Longhorn auto-cleans after upload.
 - **Disaster recovery**: full cluster-rebuild runbook in
   [docs/disaster-recovery.md](docs/disaster-recovery.md). Restoring backups

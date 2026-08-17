@@ -2,8 +2,8 @@
 # (every volume with no explicit recurring-job groups of its own).
 #
 # Local snapshot-only jobs are intentionally NOT used: they burn disk on busy
-# volumes (e.g. Prometheus TSDB) and duplicate the K8up file/dump tier plus
-# Kasten CSI snapshots. Backup tasks still take a short-lived local snap as
+# volumes (e.g. Prometheus TSDB) and duplicate the K8up file/dump tier.
+# Backup tasks still take a short-lived local snap as
 # part of the upload; auto-cleanup-recurring-job-backup-snapshot removes it.
 #
 # Tiers (backups are incremental per volume — shared blocks stored once):

@@ -1,9 +1,8 @@
 # Chart defaults are correct: installCRDs true, single controller replica,
 # validating webhook disabled (snapshot validation is CEL-based since
-# external-snapshotter v8). ServiceMonitor left off — add via
-# monitoring-config if Kasten survives the evaluation.
+# external-snapshotter v8). ServiceMonitor left off.
 #
-# VolumeSnapshotClasses are deliberately NOT set here — the Longhorn class
-# lives in kasten-config with the rest of the Kasten evaluation config.
+# VolumeSnapshotClasses are deliberately NOT set here — define one alongside
+# whatever consumes CSI snapshots (none currently).
 controller:
   replicaCount: 1
