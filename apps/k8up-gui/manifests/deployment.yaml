@@ -21,6 +21,9 @@ spec:
         app.kubernetes.io/name: k8up-gui
     spec:
       serviceAccountName: k8up-gui
+      # Drop when ghcr.io/d-kholin/k8up-btl is public.
+      imagePullSecrets:
+        - name: ghcr-pull
       securityContext:
         fsGroup: 65532
         fsGroupChangePolicy: OnRootMismatch
