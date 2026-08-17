@@ -14,4 +14,4 @@ labels:
     includeSelectors: false
 images:
   - name: ghcr.io/d-kholin/k8up-btl
-    newTag: "1.0.0"
+    newTag: "1.2.0"
