@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: k8up-gui
+resources:
+  - namespace.yaml
+  - rbac.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - networkpolicy.yaml
+labels:
+  - pairs:
+      app.kubernetes.io/name: k8up-gui
+      app.kubernetes.io/part-of: k8up-btl
+    includeSelectors: false
+images:
+  - name: ghcr.io/d-kholin/k8up-btl
+    newTag: "1.0.0"

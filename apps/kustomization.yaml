@@ -7,6 +7,7 @@ kind: Kustomization
 resources:
   - actual-budget/application.yaml
   - dawarich/application.yaml
+  - k8up-gui/application.yaml
   - linkwarden/application.yaml
   - lubelogger/application.yaml
   - mealie/application.yaml
