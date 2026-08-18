@@ -49,8 +49,10 @@ spec:
       # Top-level folder in the shared bucket = this namespace's restic repo.
       bucket: naku-k8up/actual-budget
   backup:
-    # -random schedules are stable per Schedule and spread load across apps.
-    schedule: "@daily-random"
+    # No 6h-granularity "-random" descriptor exists in K8up, so this uses a
+    # fixed cron with a non-zero minute offset (37, not top-of-hour) to spread
+    # load — same intent as the -random schedules used elsewhere.
+    schedule: "37 */6 * * *"
     failedJobsHistoryLimit: 2
     successfulJobsHistoryLimit: 2
   check:
@@ -58,7 +60,8 @@ spec:
   prune:
     schedule: "@weekly-random"
     retention:
-      keepLast: 3
+      # keepLast: 28 covers 7 days at 4 backups/day (6h cadence).
+      keepLast: 28
       keepDaily: 14
       keepWeekly: 5
       keepMonthly: 6
