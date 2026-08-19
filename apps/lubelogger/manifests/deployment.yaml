@@ -34,7 +34,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: lubelogger
-          image: ghcr.io/hargata/lubelogger:v1.7.0
+          image: ghcr.io/hargata/lubelogger:v1.7.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
