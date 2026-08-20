@@ -70,7 +70,7 @@ spec:
           port: 5432
 ---
 # Mosquitto accepts connections only from TeslaMate (publisher) and
-# TeslaMateApi (subscriber).
+# TeslaMateApi/hedgiemate-notifier (subscribers).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -91,6 +91,7 @@ spec:
                 values:
                   - teslamate
                   - teslamateapi
+                  - hedgiemate-notifier
       ports:
         - protocol: TCP
           port: 1883

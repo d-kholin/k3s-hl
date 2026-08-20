@@ -1,0 +1,77 @@
+# HedgieMate push notifications, driven off the same MQTT broker TeslaMate
+# publishes car state to. No HTTP surface — pure MQTT subscriber pushing out
+# to the HedgieMate service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hedgiemate-notifier
+  namespace: teslamate
+  labels:
+    app: hedgiemate-notifier
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: hedgiemate-notifier
+  template:
+    metadata:
+      labels:
+        app: hedgiemate-notifier
+    spec:
+      # Restricted PSA compliant.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10000
+        runAsGroup: 10000
+        fsGroup: 10000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: hedgiemate-notifier
+          image: hedgiemate/notifier:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TZ
+              value: America/Edmonton
+            - name: MQTT_HOST
+              value: mosquitto
+            - name: CAR_IDS
+              value: "1"
+            - name: HEDGIEMATE_USER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: HEDGIEMATE_USER_TOKEN
+            - name: SERVER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: teslamate-secrets
+                  key: SERVER_ID
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: teslamate-hedgiemate-notifier-encrypted
+        - name: tmp
+          emptyDir: {}

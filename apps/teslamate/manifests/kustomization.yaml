@@ -17,6 +17,8 @@ resources:
   - postgres-pvc.yaml
   - postgres-deployment.yaml
   - postgres-service.yaml
+  - hedgiemate-notifier-pvc.yaml
+  - hedgiemate-notifier-deployment.yaml
   - networkpolicy.yaml
   - k8up-schedule.yaml
 
