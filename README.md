@@ -75,6 +75,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 | App | Purpose | Access |
 |-----|---------|--------|
 | **actual-budget** | [Actual Budget](https://actualbudget.org) sync server + web UI | ClusterIP `:5006` — expose with Pangolin/Newt |
+| **garagedoor** | [Garagedoor](https://github.com/d-kholin/garagedoor) web UI for Garage S3 clusters | ClusterIP `:3000` — expose with Pangolin/Newt (no built-in auth) |
 | **linkwarden** | [Linkwarden](https://linkwarden.app) bookmark manager & archiver | ClusterIP `:3000` — expose with Pangolin/Newt |
 | **mealie** | [Mealie](https://mealie.io) recipe manager & meal planner | ClusterIP `:9000` — expose with Pangolin/Newt |
 | **vaultwarden** | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (Bitwarden-compatible) | ClusterIP `:80` (container listens on 8080) — expose with Pangolin/Newt; admin at `/admin` |
@@ -100,6 +101,22 @@ kubectl -n actual-budget get pods,svc,pvc
 # Local smoke test without Pangolin:
 kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
 # open http://127.0.0.1:5006
+```
+
+### Garagedoor
+
+- Image: `ghcr.io/d-kholin/garagedoor:1.0.0`
+- Data: Longhorn PVC `garagedoor-data-encrypted` (**32Gi**, RWO) mounted at `/data` (resync/replication history samples)
+- In-cluster URL: `http://garagedoor.garagedoor.svc.cluster.local:3000`
+- `GARAGE_ADMIN_ENDPOINT` and `GARAGE_ADMIN_TOKEN` (in the SOPS secret) point at the Garage admin API — the token is `admin_token` in the Garage server config.
+- **No built-in auth** — only expose it behind a Pangolin resource with authentication enabled.
+
+```bash
+kubectl -n garagedoor get pods,svc,pvc
+
+# Local smoke test without Pangolin:
+kubectl -n garagedoor port-forward svc/garagedoor 3000:3000
+# open http://127.0.0.1:3000
 ```
 
 ### Linkwarden
