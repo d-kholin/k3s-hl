@@ -70,6 +70,9 @@ spec:
               value: "1"
             - name: ALLOW_SIGNUP
               value: "false"
+            # Auth token lifetime in hours.
+            - name: TOKEN_TIME
+              value: "9600"
             # Used for share/notification links and OIDC callbacks — keep in
             # sync with the Pangolin resource URL and the redirect URIs
             # registered on the SSO client. Tenant-specific, so it lives in
