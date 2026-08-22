@@ -1,0 +1,16 @@
+# Managed namespace. The CWA image is linuxserver-style: its s6-overlay init
+# must start as root to chown the volumes and drop to the PUID/PGID user, so
+# this namespace enforces "baseline" (explicitly, in git — root allowed, but
+# no privileged containers, host namespaces, or extra capabilities) while the
+# other app namespaces enforce "restricted".
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: calibre-web-automated
+  annotations:
+    # Deleting the namespace would take the data PVCs with it — never let Argo
+    # prune or cascade-delete it.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: baseline

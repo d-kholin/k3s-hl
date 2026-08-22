@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: calibre-web-automated
+  namespace: calibre-web-automated
+  labels:
+    app: calibre-web-automated
+spec:
+  replicas: 1
+  # RWO volumes — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: calibre-web-automated
+      app.kubernetes.io/name: calibre-web-automated
+  template:
+    metadata:
+      labels:
+        app: calibre-web-automated
+        app.kubernetes.io/name: calibre-web-automated
+    spec:
+      # linuxserver-style image: s6 init starts as root, chowns the volumes,
+      # and drops the app to the PUID/PGID user (baseline PSA namespace).
+      # PUID/PGID match the values the old compose stack ran with, so the
+      # migrated data's ownership is already correct.
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: calibre-web-automated
+          image: crocodilestick/calibre-web-automated:v4.0.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8083
+              protocol: TCP
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              value: America/Edmonton
+            # No DOCKER_MODS universal-calibre (unlike the old compose stack):
+            # the CWA image bundles the same calibre in /app/calibre, so the
+            # mod's root-run download at every start adds nothing.
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: library
+              mountPath: /calibre-library
+            - name: ingest
+              mountPath: /cwa-book-ingest
+          # First start scans the library — give it the same generous window
+          # the compose healthcheck did (start_period 120s).
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          # Limits sized for ebook conversions (calibre spawns worker
+          # processes that are briefly CPU/memory hungry).
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: calibre-web-automated-config-encrypted
+        - name: library
+          persistentVolumeClaim:
+            claimName: calibre-web-automated-library-encrypted
+        - name: ingest
+          persistentVolumeClaim:
+            claimName: calibre-web-automated-ingest-encrypted
