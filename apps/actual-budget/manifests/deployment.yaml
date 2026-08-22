@@ -43,6 +43,38 @@ spec:
               value: "5006"
             - name: ACTUAL_HOSTNAME
               value: "0.0.0.0"
+            # OIDC login. Discovery URL, client id/secret and
+            # Actual's public URL are tenant-identifying, so they live in the
+            # SOPS-encrypted actual-budget-secrets. The client's callback URL
+            # on the IdP must be https://<actual public host>/openid/callback
+            - name: ACTUAL_OPENID_DISCOVERY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: actual-budget-secrets
+                  key: ACTUAL_OPENID_DISCOVERY_URL
+            - name: ACTUAL_OPENID_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: actual-budget-secrets
+                  key: ACTUAL_OPENID_CLIENT_ID
+            - name: ACTUAL_OPENID_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: actual-budget-secrets
+                  key: ACTUAL_OPENID_CLIENT_SECRET
+            - name: ACTUAL_OPENID_SERVER_HOSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: actual-budget-secrets
+                  key: ACTUAL_OPENID_SERVER_HOSTNAME
+            # Keep password login available until SSO is confirmed working,
+            # then flip to "true" to make OpenID the only login method.
+            - name: ACTUAL_OPENID_ENFORCE
+              value: "false"
+            # Auto-provision an Actual account for anyone the IdP authenticates
+            # (default "manual" would require pre-creating users in the admin UI)
+            - name: ACTUAL_USER_CREATION_MODE
+              value: "login"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
