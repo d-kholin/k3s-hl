@@ -1,0 +1,33 @@
+# Argo CD Application for ToolTracker (tool lending tracker).
+# Workload path: apps/tooltracker/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tooltracker
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/tooltracker/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tooltracker
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    # k8up-schedule.yaml needs the K8up CRDs (wave-1 infra app) — skip dry-run
+    # + retry cover first sync on a fresh cluster.
+    syncOptions:
+      - SkipDryRunOnMissingResource=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m

@@ -16,4 +16,5 @@ resources:
   - mealie/application.yaml
   - newt/application.yaml
   - teslamate/application.yaml
+  - tooltracker/application.yaml
   - vaultwarden/application.yaml

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tooltracker-data-encrypted
+  namespace: tooltracker
+  annotations:
+    # Never let Argo delete this PVC (prune or app deletion) — data lives here.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 1Gi
