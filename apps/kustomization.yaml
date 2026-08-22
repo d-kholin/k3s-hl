@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   - actual-budget/application.yaml
+  - cloudflare-ddns/application.yaml
   - dawarich/application.yaml
   - garagedoor/application.yaml
   - k8up-btl/application.yaml
