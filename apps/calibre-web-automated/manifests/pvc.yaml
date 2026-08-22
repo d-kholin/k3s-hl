@@ -1,0 +1,48 @@
+# Three PVCs mirroring the compose volumes: the Calibre library (books +
+# metadata.db), the app config (app.db, kepubify state, logs), and the ingest
+# watch folder new books get dropped into.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: calibre-web-automated-library-encrypted
+  namespace: calibre-web-automated
+  annotations:
+    # Never let Argo delete this PVC (prune or app deletion) — data lives here.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: calibre-web-automated-config-encrypted
+  namespace: calibre-web-automated
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: calibre-web-automated-ingest-encrypted
+  namespace: calibre-web-automated
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 2Gi

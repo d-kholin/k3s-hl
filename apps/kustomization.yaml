@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   - actual-budget/application.yaml
+  - calibre-web-automated/application.yaml
   - cloudflare-ddns/application.yaml
   - dawarich/application.yaml
   - freezerstock/application.yaml
