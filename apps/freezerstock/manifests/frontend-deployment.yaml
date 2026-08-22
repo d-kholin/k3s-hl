@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freezerstock-frontend
+  namespace: freezerstock
+  labels:
+    app: freezerstock-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: freezerstock-frontend
+      app.kubernetes.io/name: freezerstock
+  template:
+    metadata:
+      labels:
+        app: freezerstock-frontend
+        app.kubernetes.io/name: freezerstock
+    spec:
+      # Restricted PSA compliant. Stock nginx:alpine image run as its bundled
+      # nginx user (uid 101); it listens on 3000 (>1024) and logs to
+      # stdout/stderr, so root is only needed for the paths made writable
+      # below.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: frontend
+          image: ghcr.io/d-kholin/freezerstock-frontend:v1.1.5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # nginx temp/cache dirs and the pid file (/run/nginx.pid)
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /run
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}

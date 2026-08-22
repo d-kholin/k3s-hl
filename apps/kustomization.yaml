@@ -8,6 +8,7 @@ resources:
   - actual-budget/application.yaml
   - cloudflare-ddns/application.yaml
   - dawarich/application.yaml
+  - freezerstock/application.yaml
   - garagedoor/application.yaml
   - k8up-btl/application.yaml
   - linkwarden/application.yaml

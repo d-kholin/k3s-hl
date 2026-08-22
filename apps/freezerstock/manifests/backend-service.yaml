@@ -1,0 +1,20 @@
+# Named "backend" (not freezerstock-backend): the frontend image's nginx
+# config hard-codes proxy_pass http://backend:3001 (the compose service
+# name), and in-namespace DNS makes that resolve here unchanged.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: freezerstock
+  labels:
+    app: freezerstock-backend
+spec:
+  type: ClusterIP
+  selector:
+    app: freezerstock-backend
+    app.kubernetes.io/name: freezerstock
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+      protocol: TCP
