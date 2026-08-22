@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: tooltracker
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - networkpolicy.yaml
+  - k8up-schedule.yaml
+
+generators:
+  - ksops-generator.yaml
+
+# Metadata-only labels (selectors are set explicitly in the manifests —
+# the deprecated commonLabels used to inject them, and selectors are immutable).
+labels:
+  - pairs:
+      app.kubernetes.io/name: tooltracker
+    includeSelectors: false
