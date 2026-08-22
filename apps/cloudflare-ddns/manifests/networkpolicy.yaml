@@ -1,0 +1,11 @@
+# Default-deny ingress — the updater exposes nothing and nothing should reach
+# it. Egress stays open (Cloudflare API + public-IP detection over HTTPS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: cloudflare-ddns
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress

@@ -1,0 +1,24 @@
+# Argo CD Application for cloudflare-ddns (favonia/cloudflare-ddns).
+# Keeps Cloudflare DNS A records pointed at the current public IPv4.
+# Workload path: apps/cloudflare-ddns/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflare-ddns
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/cloudflare-ddns/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudflare-ddns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

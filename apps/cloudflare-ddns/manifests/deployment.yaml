@@ -1,0 +1,71 @@
+# Cloudflare DDNS updater. IPv4 only — no host networking needed, the pod's
+# outbound traffic NATs through the node and the updater detects the public
+# IPv4 via Cloudflare's trace endpoint. Static scratch-image binary: runs
+# read-only with no writable volumes.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflare-ddns
+  namespace: cloudflare-ddns
+  labels:
+    app: cloudflare-ddns
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: cloudflare-ddns
+      app.kubernetes.io/name: cloudflare-ddns
+  template:
+    metadata:
+      labels:
+        app: cloudflare-ddns
+        app.kubernetes.io/name: cloudflare-ddns
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cloudflare-ddns
+          image: favonia/cloudflare-ddns:1.17.0
+          imagePullPolicy: IfNotPresent
+          env:
+            # API token and domain list are tenant-identifying — SOPS secret.
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secrets
+                  key: CLOUDFLARE_API_TOKEN
+            - name: DOMAINS
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secrets
+                  key: DOMAINS
+            - name: PROXIED
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-ddns-secrets
+                  key: PROXIED
+            # IPv4 only.
+            - name: IP6_PROVIDER
+              value: none
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
