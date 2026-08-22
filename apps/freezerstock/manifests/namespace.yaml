@@ -1,0 +1,14 @@
+# Managed namespace (instead of Argo's CreateNamespace=true) so Pod Security
+# Admission labels live in git. "restricted" rejects any future pod that
+# regresses to root / extra capabilities.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: freezerstock
+  annotations:
+    # Deleting the namespace would take the data PVC with it — never let Argo
+    # prune or cascade-delete it.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
