@@ -33,7 +33,6 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mealie
-          # Deliberately pinned behind latest (v3.22.0) as a Renovate test.
           image: ghcr.io/mealie-recipes/mealie:v3.23.1
           imagePullPolicy: IfNotPresent
           ports:
