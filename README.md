@@ -268,8 +268,7 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
 - [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget, Vaultwarden).
 - [ ] Chart pins today: Longhorn `1.12.1`, kube-prometheus-stack `88.5.3`, Argo CD `v3.5.1` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.
 - [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups AND all SOPS secrets. Verify you can locate it.
-- [ ] The Newt Pangolin LAN IP is defined once as `PANGOLIN_LAN_IP` in
-  `apps/newt/manifests/kustomization.yaml` — update it there if the server moves.
+- [ ] The `hostAliases` IP `172.20.0.7` (Pangolin LAN address) is hardcoded in both Newt deployments — update there if the Pangolin server moves.
 - [x] **Argo CD ↔ git access**: public HTTPS, no credentials required.
 - [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
 - [x] **SOPS in Argo**: KSOPS plugin + `sops-age` secret — now GitOps-managed (`infrastructure/argocd`); `sops-age` itself stays manual by design.
