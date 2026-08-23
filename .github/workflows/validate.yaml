@@ -10,29 +10,53 @@ on:
   push:
     branches: [master]
   pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
+    name: Render and validate manifests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install kustomize and kubeconform
+      - name: Install Argo's kustomize and kubeconform
         run: |
+          set -euo pipefail
+
+          # Argo's repo-server gets kustomize from this exact KSOPS image.
+          # Extract that binary for CI instead of independently choosing a
+          # version which may render manifests differently.
+          ksops_image=$(awk '$1 == "image:" && $2 ~ /^viaductoss\/ksops:/ { print $2; exit }' \
+            infrastructure/argocd/manifests/repo-server-ksops-patch.yaml)
+          test -n "$ksops_image"
+          echo "Using Argo renderer from $ksops_image"
+          container_id=$(docker create "$ksops_image")
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+          docker cp "$container_id:/usr/local/bin/kustomize" /tmp/kustomize
+          sudo install -m 0755 /tmp/kustomize /usr/local/bin/kustomize
+
           cd /tmp
-          curl -fsSL -o kustomize.tar.gz "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz"
-          tar xf kustomize.tar.gz kustomize && sudo mv kustomize /usr/local/bin/
           curl -fsSL -o kubeconform.tar.gz "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz"
           tar xf kubeconform.tar.gz kubeconform && sudo mv kubeconform /usr/local/bin/
           kustomize version && kubeconform -v
 
       - name: Stub ksops (no decryption in CI)
         run: |
+          set -euo pipefail
           printf '#!/bin/sh\nexit 0\n' | sudo tee /usr/local/bin/ksops >/dev/null
           sudo chmod +x /usr/local/bin/ksops
 
       - name: Ensure all *.sops.yaml files are encrypted
         run: |
+          set -uo pipefail
           fail=0
           while IFS= read -r f; do
             if ! grep -q 'ENC\[AES256_GCM' "$f"; then
@@ -47,18 +71,31 @@ jobs:
 
       - name: kustomize build + kubeconform
         run: |
-          set -o pipefail
+          set -uo pipefail
           fail=0
+          render_dir=$(mktemp -d)
+          trap 'rm -rf "$render_dir"' EXIT
           while IFS= read -r kfile; do
             dir=$(dirname "$kfile")
             echo "==> $dir"
-            if ! kustomize build --enable-alpha-plugins --enable-exec "$dir" \
-              | kubeconform -strict -summary \
+            output="$render_dir/$(echo "$dir" | tr '/.' '__').yaml"
+            if ! kustomize build --enable-alpha-plugins --enable-exec "$dir" > "$output"; then
+              echo "::error::kustomize build failed for $dir"
+              fail=1
+            elif ! kubeconform -strict -summary \
                   -schema-location default \
                   -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-                  -ignore-missing-schemas; then
-              echo "::error::validation failed for $dir"
+                  -ignore-missing-schemas "$output"; then
+              echo "::error::schema validation failed for $dir"
               fail=1
             fi
           done < <(find . -name kustomization.yaml -not -path './.git/*' | sort)
+
+          newt_output="$render_dir/__apps_newt_manifests.yaml"
+          if [[ -s "$newt_output" ]]; then
+            python3 scripts/validate-rendered-invariants.py "$newt_output" || fail=1
+          else
+            echo "::error::Newt kustomization produced no rendered output"
+            fail=1
+          fi
           exit $fail
