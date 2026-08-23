@@ -231,6 +231,17 @@ kubectl -n actual-budget get pods,svc
 kubectl -n vaultwarden get pods,svc
 ```
 
+### Repository protection
+
+Protect `master` with pull requests and require the GitHub Actions check
+**Render and validate manifests** before merging. Also require branches to be
+up to date before merging and disallow force pushes to `master`.
+
+That check uses the same Kustomize binary as Argo's KSOPS image, verifies every
+kustomization with kubeconform, checks encrypted Secret references, rejects
+unencrypted SOPS files, and enforces rendered invariants for Newt's critical
+Pangolin host aliases.
+
 ## How secrets work (SOPS + age + KSOPS)
 
 1. **SOPS** encrypts selected fields (`data` / `stringData`) in `*.sops.yaml` files using age public keys.
