@@ -31,7 +31,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: grafana
-          image: teslamate/grafana:4.1.1
+          image: teslamate/grafana:4.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
