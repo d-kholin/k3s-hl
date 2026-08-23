@@ -35,11 +35,6 @@ spec:
                 labelSelector:
                   matchLabels:
                     app.kubernetes.io/part-of: newt
-      # Pangolin server is reached via its LAN address, not the public DNS.
-      hostAliases:
-        - ip: 172.20.0.7
-          hostnames:
-            - proxy.thegriffiths.ca
       containers:
         - name: newt
           image: docker.io/fosrl/newt:1.16.0

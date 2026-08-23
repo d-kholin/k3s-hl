@@ -42,8 +42,12 @@ jobs:
           done < <(find . -name '*.sops.yaml' -not -name '.sops.yaml' -not -path './.git/*')
           exit $fail
 
+      - name: Validate encrypted Secret references
+        run: python3 scripts/validate-secret-refs.py
+
       - name: kustomize build + kubeconform
         run: |
+          set -o pipefail
           fail=0
           while IFS= read -r kfile; do
             dir=$(dirname "$kfile")

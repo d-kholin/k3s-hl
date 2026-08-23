@@ -32,7 +32,7 @@ External access is intended via **Pangolin + Newt** (ClusterIP services), not Lo
 
 | Component | Purpose | Notes |
 |-----------|---------|--------|
-| **argocd** | Argo CD manages itself | Stock `install.yaml` v3.5.0 + KSOPS repo-server patch; bootstrap via `kubectl apply -k` |
+| **argocd** | Argo CD manages itself | Stock `install.yaml` v3.5.1 + KSOPS repo-server patch; bootstrap via `kubectl apply -k` |
 | **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
 | **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily/weekly/monthly S3 block backups (no local snapshot job) |
 | **k8up** | File/dump-level backups | Nightly restic backups per namespace to Garage; restorable per file from any tailnet machine ([docs/backups.md](docs/backups.md)) |
@@ -105,7 +105,7 @@ kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
 
 ### Garagedoor
 
-- Image: `ghcr.io/d-kholin/garagedoor:1.0.0`
+- Image: `ghcr.io/d-kholin/garagedoor:1.0.3`
 - Data: Longhorn PVC `garagedoor-data-encrypted` (**32Gi**, RWO) mounted at `/data` (resync/replication history samples)
 - In-cluster URL: `http://garagedoor.garagedoor.svc.cluster.local:3000`
 - `GARAGE_ADMIN_ENDPOINT` and `GARAGE_ADMIN_TOKEN` (in the SOPS secret) point at the Garage admin API — the token is `admin_token` in the Garage server config.
@@ -121,7 +121,7 @@ kubectl -n garagedoor port-forward svc/garagedoor 3000:3000
 
 ### Linkwarden
 
-- Image: `ghcr.io/linkwarden/linkwarden:v2.16.0`, plus per-namespace `postgres:18` and `getmeili/meilisearch:v1.12.8` (search backend; version pinned by Linkwarden's compose)
+- Image: `ghcr.io/linkwarden/linkwarden:v2.16.1`, plus per-namespace `postgres:18` and `getmeili/meilisearch:v1.53.1`
 - Data: Longhorn PVCs `linkwarden-data-encrypted` (**10Gi**, archives), `linkwarden-pgdata-encrypted` (**5Gi**), `linkwarden-meili-encrypted` (**2Gi**)
 - In-cluster URL: `http://linkwarden.linkwarden.svc.cluster.local:3000`
 - `NEXTAUTH_URL` (in the SOPS secret) is `https://<public host>/api/v1/auth`; keep the host in sync with the Pangolin resource.
@@ -138,7 +138,7 @@ kubectl -n linkwarden port-forward svc/linkwarden 3000:3000
 
 ### Mealie
 
-- Image: `ghcr.io/mealie-recipes/mealie:v3.20.1` (pinned behind latest on purpose — Renovate test)
+- Image: `ghcr.io/mealie-recipes/mealie:v3.23.1`
 - Data: Longhorn PVC `mealie-data-encrypted` (**5Gi**, RWO) mounted at `/app/data` (SQLite)
 - In-cluster URL: `http://mealie.mealie.svc.cluster.local:9000`
 - First login: `changeme@example.com` / `MyPassword` — change immediately. Signups disabled (`ALLOW_SIGNUP=false`).
@@ -154,7 +154,7 @@ kubectl -n mealie port-forward svc/mealie 9000:9000
 
 ### Vaultwarden
 
-- Image: `vaultwarden/server:1.37.1`
+- Image: `vaultwarden/server:1.37.2`
 - Data: Longhorn PVC `vaultwarden-data` (**5Gi**, RWO) mounted at `/data`
 - Secret: `ADMIN_TOKEN` in `apps/vaultwarden/manifests/secret.sops.yaml` (SOPS + age; decrypted by KSOPS)
 - In-cluster URL: `http://vaultwarden.vaultwarden.svc.cluster.local`
@@ -266,9 +266,10 @@ sops apps/vaultwarden/manifests/secret.sops.yaml
   SMTP still in `monitoring-config` SOPS if you bring it back.
 - [ ] **Test-restore a backup quarterly** — see docs/disaster-recovery.md "Ongoing hygiene".
 - [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget, Vaultwarden).
-- [ ] Chart pins today: Longhorn `1.12.0`, kube-prometheus-stack `88.2.0`, Argo CD `v3.5.0` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.
+- [ ] Chart pins today: Longhorn `1.12.1`, kube-prometheus-stack `88.5.3`, Argo CD `v3.5.1` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.
 - [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups AND all SOPS secrets. Verify you can locate it.
-- [ ] The `hostAliases` IP `172.20.0.7` (Pangolin LAN address) is hardcoded in both Newt deployments — update there if the Pangolin server moves.
+- [ ] The Newt Pangolin LAN IP is defined once as `PANGOLIN_LAN_IP` in
+  `apps/newt/manifests/kustomization.yaml` — update it there if the server moves.
 - [x] **Argo CD ↔ git access**: public HTTPS, no credentials required.
 - [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
 - [x] **SOPS in Argo**: KSOPS plugin + `sops-age` secret — now GitOps-managed (`infrastructure/argocd`); `sops-age` itself stays manual by design.
