@@ -121,7 +121,7 @@ kubectl -n garagedoor port-forward svc/garagedoor 3000:3000
 
 ### Linkwarden
 
-- Image: `ghcr.io/linkwarden/linkwarden:v2.16.1`, plus per-namespace `postgres:18` and `getmeili/meilisearch:v1.53.1`
+- Image: `ghcr.io/linkwarden/linkwarden:v2.16.1`, plus per-namespace `postgres:18.6` and `getmeili/meilisearch:v1.53.1`
 - Data: Longhorn PVCs `linkwarden-data-encrypted` (**10Gi**, archives), `linkwarden-pgdata-encrypted` (**5Gi**), `linkwarden-meili-encrypted` (**2Gi**)
 - In-cluster URL: `http://linkwarden.linkwarden.svc.cluster.local:3000`
 - `NEXTAUTH_URL` (in the SOPS secret) is `https://<public host>/api/v1/auth`; keep the host in sync with the Pangolin resource.

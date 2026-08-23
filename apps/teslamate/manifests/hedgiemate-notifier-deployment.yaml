@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: hedgiemate-notifier
-          image: hedgiemate/notifier:latest
+          image: hedgiemate/notifier:1.5.0
           imagePullPolicy: IfNotPresent
           env:
             - name: TZ
