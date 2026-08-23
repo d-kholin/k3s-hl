@@ -1,288 +1,160 @@
-# k3s-hl — GitOps for k3s + Argo CD
+# k3s-hl
 
-Homelab GitOps repository for a k3s cluster managed by Argo CD.
-Secrets are encrypted with [SOPS](https://github.com/getsops/sops) + [age](https://github.com/FiloSottile/age) and decrypted in-cluster by [KSOPS](https://github.com/viaduct-ai/kustomize-sops).
+`k3s-hl` is the GitOps source of truth for a private k3s homelab cluster. Argo CD continuously reconciles the cluster from this repository, including shared infrastructure and namespaced workloads.
 
-External access is intended via **Pangolin + Newt** (ClusterIP services), not LoadBalancer / MetalLB.
+The cluster is designed around private-by-default networking, encrypted persistent storage, layered backups, and encrypted configuration in Git. Workload services remain inside the cluster and are published through Pangolin and redundant Newt tunnels; the cluster does not use public `LoadBalancer` services or MetalLB.
 
-## Layout
+## Architecture
 
+```text
+Git repository
+└── Argo CD root Application
+    ├── infrastructure/  → cluster-wide services and configuration
+    └── apps/            → one child Application per workload
 ```
+
+- **GitOps:** Argo CD tracks the repository's default branch through `HEAD`, creates child Applications, and automatically prunes drift and self-heals managed resources.
+- **Networking:** Workloads normally expose `ClusterIP` Services. NetworkPolicies restrict traffic, while Pangolin and Newt provide external access.
+- **Storage:** Longhorn supplies replicated persistent volumes. The default StorageClass encrypts volumes with dm-crypt and retains them when claims are removed.
+- **Secrets:** SOPS encrypts secrets with age before they enter Git. Argo CD uses KSOPS to decrypt them only while rendering manifests.
+- **Backups:** Longhorn provides block-level disaster-recovery backups, while K8up provides file- and database-level restic backups.
+- **Observability:** Monitoring manifests are retained in the repository but are currently excluded from reconciliation to conserve cluster resources.
+
+## Repository structure
+
+```text
 .
-├── .sops.yaml
-├── .github/workflows/         # CI: kustomize build + kubeconform + sops guard
+├── .github/workflows/          # Pull-request validation
 ├── bootstrap/
-│   └── root-app.yaml          # App-of-Apps root (infrastructure/ + apps/)
-├── docs/                      # Runbooks (disaster recovery, encrypted-volume migration)
+│   └── root-app.yaml           # Argo CD root Application
 ├── infrastructure/
-│   ├── argocd/                # Argo CD manages itself (install.yaml + KSOPS patch)
-│   ├── longhorn/              # Longhorn Helm
-│   ├── longhorn-config/       # Encrypted StorageClass, S3 backup target, backup RecurringJobs
-│   ├── k8up/                  # K8up Helm (restic file/dump backups)
-│   ├── k8up-config/           # Global backend credentials (SOPS)
-│   ├── monitoring/            # kube-prometheus-stack (DISABLED — not in app-of-apps)
-│   └── monitoring-config/     # Alertmanager/rules (DISABLED — not in app-of-apps)
-└── apps/
-    ├── actual-budget/         # Actual Budget (personal finance)
-    ├── newt/                  # Pangolin tunnel client (two redundant sites)
-    └── vaultwarden/           # Vaultwarden (password manager; SOPS secret)
+│   ├── kustomization.yaml      # Active infrastructure Applications
+│   └── <component>/
+│       ├── application.yaml    # Argo CD child Application
+│       ├── values.yaml         # Helm values, when applicable
+│       └── manifests/          # Additional Kubernetes resources
+├── apps/
+│   ├── kustomization.yaml      # Workload Applications
+│   └── <workload>/
+│       ├── application.yaml    # Argo CD child Application
+│       └── manifests/          # Workload resources
+├── docs/                       # Operational and recovery runbooks
+├── scripts/                    # Node setup and CI validation helpers
+├── .sops.yaml                  # SOPS creation and age recipient rules
+└── renovate.json               # Automated dependency update policy
 ```
 
-## Infrastructure
+The two top-level Kustomizations are an app-of-apps index: they contain Argo CD `Application` resources rather than the workloads themselves. Each child Application points back to its own directory in this repository and is reconciled independently.
 
-| Component | Purpose | Notes |
-|-----------|---------|--------|
-| **argocd** | Argo CD manages itself | Stock `install.yaml` v3.5.1 + KSOPS repo-server patch; bootstrap via `kubectl apply -k` |
-| **Longhorn** | Distributed block storage | **3 replicas**, data path `/var/lib/longhorn` |
-| **longhorn-config** | Storage encryption + backups | `longhorn-encrypted` default StorageClass (dm-crypt), daily/weekly/monthly S3 block backups (no local snapshot job) |
-| **k8up** | File/dump-level backups | Nightly restic backups per namespace to Garage; restorable per file from any tailnet machine ([docs/backups.md](docs/backups.md)) |
-| **k8up-config** | K8up credentials | One SOPS secret: S3 endpoint, Garage key, shared restic repo password |
-| **monitoring** *(disabled)* | kube-prometheus-stack | Manifests kept under `infrastructure/monitoring{,-config}/` but **not** listed in `infrastructure/kustomization.yaml` (was too heavy: ~1.7 Gi Prometheus + 20 Gi PVC). Re-enable by restoring those two resource lines. |
-| **coredns-custom** | Cluster DNS overrides | Pins `garage.nakunga.com` (S3 backup target, Tailscale-only) for pods |
+## Application structure
 
-### Volume encryption & backups
+Each workload lives in `apps/<workload>/` and owns its full Kubernetes definition. A typical directory looks like this:
 
-- **`longhorn-encrypted`** is the default StorageClass: volumes are dm-crypt
-  encrypted with the passphrase in `longhorn-config/manifests/crypto-secret.sops.yaml`
-  (SOPS/age, decrypted in-cluster by KSOPS). Backups of encrypted volumes stay
-  encrypted — the S3 target never sees plaintext. `reclaimPolicy: Retain`.
-- **Backup target**: self-hosted Garage S3 (`garage.nakunga.com`, Tailscale-only),
-  configured in `infrastructure/longhorn/values.yaml` (`defaultBackupStore`) with
-  credentials in `longhorn-config/manifests/backup-target-secret.sops.yaml`.
-  Nodes are joined to the tailnet (`tailscale up --accept-dns=false`); pod DNS
-  for the hostname comes from the `coredns-custom` app.
-- **Two backup tiers** (details in [docs/backups.md](docs/backups.md)):
-  - **K8up/restic (nightly, usable tier)**: per-namespace restic repos in the
-    `naku-k8up` bucket — file-level PVC backups plus `pg_dump` SQL for the
-    Postgres apps. restic encrypts client-side; single files are restorable
-    from any tailnet machine, cluster up or not.
-  - **Longhorn block (DR tier)**: S3 block backups daily 03:00 (retain 7),
-    Saturday 04:30 (retain 5), and monthly (retain 6) → whole-volume recovery
-    points span ~6 months. No recurring *local-only* snapshots (they duplicate
-    K8up and bloat busy volumes); backup tasks still use a short-lived
-    snap that Longhorn auto-cleans after upload.
-- **Disaster recovery**: full cluster-rebuild runbook in
-  [docs/disaster-recovery.md](docs/disaster-recovery.md). Restoring backups
-  needs the crypto passphrase → which needs an age private key from
-  `.sops.yaml`. Keep an **offline copy of your personal age key**.
-- Migrating pre-existing unencrypted PVCs: see
-  [docs/encrypted-volume-migration.md](docs/encrypted-volume-migration.md).
-- App PVCs carry `argocd.argoproj.io/sync-options: Prune=false,Delete=false` so
-  Argo never deletes data volumes on prune/app-deletion.
-
-## Apps
-
-| App | Purpose | Access |
-|-----|---------|--------|
-| **actual-budget** | [Actual Budget](https://actualbudget.org) sync server + web UI | ClusterIP `:5006` — expose with Pangolin/Newt |
-| **garagedoor** | [Garagedoor](https://github.com/d-kholin/garagedoor) web UI for Garage S3 clusters | ClusterIP `:3000` — expose with Pangolin/Newt (no built-in auth) |
-| **linkwarden** | [Linkwarden](https://linkwarden.app) bookmark manager & archiver | ClusterIP `:3000` — expose with Pangolin/Newt |
-| **mealie** | [Mealie](https://mealie.io) recipe manager & meal planner | ClusterIP `:9000` — expose with Pangolin/Newt |
-| **vaultwarden** | [Vaultwarden](https://github.com/dani-garcia/vaultwarden) (Bitwarden-compatible) | ClusterIP `:80` (container listens on 8080) — expose with Pangolin/Newt; admin at `/admin` |
-| **newt** | [Newt](https://github.com/fosrl/newt) Pangolin tunnel client | Two sites (redundant), spread across nodes |
-
-Workload security: app namespaces enforce the **restricted** Pod Security
-Standard (pods run non-root, all capabilities dropped, read-only rootfs,
-seccomp); `newt` is **privileged** (needs root + NET_ADMIN + /dev/net/tun).
-Default-deny ingress NetworkPolicies mean **only Newt pods** can reach the
-apps — in-cluster smoke tests from other namespaces will (correctly) time
-out; use `kubectl port-forward` instead.
-
-### Actual Budget
-
-- Image: `actualbudget/actual-server:26.8.1-alpine`
-- Data: Longhorn PVC `actual-budget-data` (**5Gi**, RWO) mounted at `/data`
-- In-cluster URL: `http://actual-budget.actual-budget.svc.cluster.local:5006`
-- First visit (via Pangolin or port-forward): set the **server password** in the UI (stored in the volume; not in git)
-
-```bash
-kubectl -n actual-budget get pods,svc,pvc
-
-# Local smoke test without Pangolin:
-kubectl -n actual-budget port-forward svc/actual-budget 5006:5006
-# open http://127.0.0.1:5006
+```text
+apps/<workload>/
+├── application.yaml
+└── manifests/
+    ├── kustomization.yaml
+    ├── namespace.yaml
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── networkpolicy.yaml
+    ├── pvc.yaml                 # Stateful workloads only
+    ├── k8up-schedule.yaml       # Backup-enabled workloads only
+    ├── secret.sops.yaml         # Encrypted configuration only
+    └── ksops-generator.yaml     # Includes encrypted resources
 ```
 
-### Garagedoor
+Only `application.yaml` and `manifests/kustomization.yaml` are universal. The remaining files are included when the workload needs them; more complex workloads may have several Deployments, Services, PVCs, or internal data stores.
 
-- Image: `ghcr.io/d-kholin/garagedoor:1.0.3`
-- Data: Longhorn PVC `garagedoor-data-encrypted` (**32Gi**, RWO) mounted at `/data` (resync/replication history samples)
-- In-cluster URL: `http://garagedoor.garagedoor.svc.cluster.local:3000`
-- `GARAGE_ADMIN_ENDPOINT` and `GARAGE_ADMIN_TOKEN` (in the SOPS secret) point at the Garage admin API — the token is `admin_token` in the Garage server config.
-- **No built-in auth** — only expose it behind a Pangolin resource with authentication enabled.
+### Workload conventions
+
+- Every workload has an explicit namespace managed in Git.
+- Namespaces use the restricted Pod Security Standard by default. Any baseline or privileged exception is declared explicitly for software that cannot run under the restricted profile.
+- Containers use explicit, readable image tags. Renovate proposes version updates through pull requests.
+- Deployments are expected to define resource requests and limits, health probes, and hardened security contexts where supported by the image.
+- User-facing services are normally `ClusterIP` and protected by default-deny NetworkPolicies. External routing is handled by the tunnel layer.
+- Stateful workloads use `longhorn-encrypted` PVCs. Namespace and PVC resources carry `Prune=false,Delete=false` where deletion would risk persistent data.
+- Backup-enabled workloads define their K8up schedule beside the application manifests so backup behavior changes with the workload.
+- Argo CD child Applications use automated pruning, self-healing, and retry policies.
+
+To add a workload, create its Application and manifests, then add `apps/<workload>/application.yaml` to `apps/kustomization.yaml`. A pull request must render and validate successfully before it can be merged.
+
+## Cluster infrastructure
+
+The active infrastructure layer provides:
+
+- Argo CD, including the KSOPS integration used to render encrypted manifests.
+- Longhorn, an encrypted default StorageClass, snapshot support, and recurring block backups.
+- K8up and shared backup-target configuration for restic-based workload backups.
+- Custom CoreDNS configuration needed for private cluster dependencies.
+
+Optional monitoring resources remain under `infrastructure/monitoring/` and `infrastructure/monitoring-config/`, but are not listed in `infrastructure/kustomization.yaml` and therefore are not currently deployed.
+
+## Storage, backups, and recovery
+
+`longhorn-encrypted` is the default StorageClass. It uses three Longhorn replicas, dm-crypt encryption, volume expansion, and a `Retain` reclaim policy. Each k3s node that hosts Longhorn replicas needs iSCSI, NFS, cryptsetup, and the required kernel modules; [`scripts/node-setup.sh`](scripts/node-setup.sh) installs and verifies those prerequisites on Debian or Ubuntu nodes.
+
+The backup design has two complementary layers:
+
+- **K8up/restic** captures recoverable files and database dumps into per-workload repositories.
+- **Longhorn** sends recurring encrypted block backups to S3-compatible object storage for full-volume recovery.
+
+The age private key is part of the recovery chain because it unlocks the encrypted storage and backup credentials. Keep a tested offline copy outside the cluster.
+
+See the runbooks for operational detail:
+
+- [Backup architecture and restore procedures](docs/backups.md)
+- [Full-cluster disaster recovery](docs/disaster-recovery.md)
+- [Encrypted-volume migration](docs/encrypted-volume-migration.md)
+
+## Secrets
+
+Files named `*.sops.yaml` contain SOPS-encrypted Kubernetes Secrets. `.sops.yaml` defines which fields are encrypted and which age recipients can decrypt them. KSOPS generators include those files in Kustomize without committing plaintext to the repository.
+
+The age private key used by Argo CD is the one intentionally manual cluster secret:
 
 ```bash
-kubectl -n garagedoor get pods,svc,pvc
-
-# Local smoke test without Pangolin:
-kubectl -n garagedoor port-forward svc/garagedoor 3000:3000
-# open http://127.0.0.1:3000
+kubectl -n argocd create secret generic sops-age \
+  --from-file=keys.txt=/path/to/offline/age-key.txt
 ```
 
-### Linkwarden
-
-- Image: `ghcr.io/linkwarden/linkwarden:v2.16.1`, plus per-namespace `postgres:18.6` and `getmeili/meilisearch:v1.53.1`
-- Data: Longhorn PVCs `linkwarden-data-encrypted` (**10Gi**, archives), `linkwarden-pgdata-encrypted` (**5Gi**), `linkwarden-meili-encrypted` (**2Gi**)
-- In-cluster URL: `http://linkwarden.linkwarden.svc.cluster.local:3000`
-- `NEXTAUTH_URL` (in the SOPS secret) is `https://<public host>/api/v1/auth`; keep the host in sync with the Pangolin resource.
-- First run: registration is open — create your account, then set `NEXT_PUBLIC_DISABLE_REGISTRATION=true` in the deployment.
-- SSO (external IdP via the Authentik provider — plain issuer-discovery OIDC) is wired but disabled: register an OIDC client on the IdP (callback `https://<public host>/api/v1/auth/callback/authentik`), put its id/secret and the issuer in the SOPS secret, then flip `NEXT_PUBLIC_AUTHENTIK_ENABLED=true`.
+Create or edit encrypted secrets locally with SOPS:
 
 ```bash
-kubectl -n linkwarden get pods,svc,pvc
-
-# Local smoke test without Pangolin:
-kubectl -n linkwarden port-forward svc/linkwarden 3000:3000
-# open http://127.0.0.1:3000
+sops --encrypt --in-place path/to/secret.sops.yaml
+sops path/to/secret.sops.yaml
 ```
 
-### Mealie
+Never commit a decrypted secret. CI checks SOPS files and the Secret references produced by the rendered manifests.
 
-- Image: `ghcr.io/mealie-recipes/mealie:v3.23.1`
-- Data: Longhorn PVC `mealie-data-encrypted` (**5Gi**, RWO) mounted at `/app/data` (SQLite)
-- In-cluster URL: `http://mealie.mealie.svc.cluster.local:9000`
-- First login: `changeme@example.com` / `MyPassword` — change immediately. Signups disabled (`ALLOW_SIGNUP=false`).
-- `BASE_URL` (in the SOPS secret) is the public URL; keep it in sync with the Pangolin resource.
+## Bootstrap
+
+On a fresh k3s cluster:
 
 ```bash
-kubectl -n mealie get pods,svc,pvc
-
-# Local smoke test without Pangolin:
-kubectl -n mealie port-forward svc/mealie 9000:9000
-# open http://127.0.0.1:9000
-```
-
-### Vaultwarden
-
-- Image: `vaultwarden/server:1.37.2`
-- Data: Longhorn PVC `vaultwarden-data` (**5Gi**, RWO) mounted at `/data`
-- Secret: `ADMIN_TOKEN` in `apps/vaultwarden/manifests/secret.sops.yaml` (SOPS + age; decrypted by KSOPS)
-- In-cluster URL: `http://vaultwarden.vaultwarden.svc.cluster.local`
-- Admin UI: `/admin` (token from the secret). Signups disabled by default (`SIGNUPS_ALLOWED=false`); invite users from admin.
-
-```bash
-kubectl -n vaultwarden get pods,svc,pvc
-
-# Local smoke test without Pangolin:
-kubectl -n vaultwarden port-forward svc/vaultwarden 8080:80
-# open http://127.0.0.1:8080  and  http://127.0.0.1:8080/admin
-```
-
-### Prerequisites (host / k3s)
-
-**Longhorn — on every node** that should run replicas:
-
-```bash
-# Debian/Ubuntu example
-sudo apt-get install -y open-iscsi nfs-common
-sudo systemctl enable --now iscsid
-
-# Volume encryption (longhorn-encrypted StorageClass) additionally needs
-# cryptsetup + the dm_crypt kernel module on every node:
-sudo apt-get install -y cryptsetup
-sudo modprobe dm_crypt   # usually built-in/autoloaded; verify with: lsmod | grep dm_crypt
-```
-
-Ensure enough disk under `/var/lib/longhorn` (or change `defaultDataPath` in `infrastructure/longhorn/values.yaml`).
-
-### Bootstrap (fresh cluster)
-
-```bash
-# 1. Argo CD + KSOPS (same kustomization Argo later manages itself with)
+# Install Argo CD with the KSOPS-enabled repository server.
 kubectl apply -k infrastructure/argocd/manifests
 
-# 2. The one manual secret — age private key from your offline copy
+# Create the sops-age Secret using the offline private key.
 kubectl -n argocd create secret generic sops-age \
   --from-file=keys.txt=/path/to/offline/age-key.txt
 
-# 3. Everything else
+# Start reconciliation of infrastructure and workloads.
 kubectl apply -f bootstrap/root-app.yaml
 ```
 
-Root Application sources: `https://github.com/d-kholin/k3s-hl.git` → paths `infrastructure` and `apps`.
-Rebuilding with data restore: follow [docs/disaster-recovery.md](docs/disaster-recovery.md) instead.
+For a rebuild that restores existing data, follow the [disaster-recovery runbook](docs/disaster-recovery.md) instead of the basic bootstrap sequence.
 
-### Monitoring & email alerts
+## Validation and change workflow
 
-**Currently disabled** (not deployed via app-of-apps — CPU/RAM/disk). Manifests and
-SOPS secrets remain in git under `infrastructure/monitoring/` and
-`monitoring-config/`. To bring the stack back, re-add to
-`infrastructure/kustomization.yaml`:
+Changes to `master` go through pull requests. Branch protection requires the **Render and validate manifests** status check, requires the branch to be current before merge, and blocks direct and force pushes.
 
-```yaml
-  - monitoring/application.yaml
-  - monitoring-config/application.yaml
-```
+The validation workflow:
 
-When enabled: kube-prometheus-stack with Longhorn + K8up alert rules; Alertmanager
-SMTP config via SOPS (`alertmanager-config.sops.yaml`); Grafana admin secret in
-`grafana-admin.sops.yaml`.
-### Verify
+- renders every Kustomization with the same Kustomize version used by the cluster's KSOPS integration;
+- validates rendered Kubernetes resources with kubeconform;
+- verifies encrypted Secret references and rejects unencrypted SOPS files; and
+- checks critical rendered invariants that must remain consistent across related manifests.
 
-```bash
-# Longhorn
-kubectl -n longhorn-system get pods
-kubectl get storageclass
-# expect longhorn-encrypted (default)
-
-# Apps
-kubectl -n argocd get applications
-kubectl -n actual-budget get pods,svc
-kubectl -n vaultwarden get pods,svc
-```
-
-### Repository protection
-
-Protect `master` with pull requests and require the GitHub Actions check
-**Render and validate manifests** before merging. Also require branches to be
-up to date before merging and disallow force pushes to `master`.
-
-That check uses the same Kustomize binary as Argo's KSOPS image, verifies every
-kustomization with kubeconform, checks encrypted Secret references, rejects
-unencrypted SOPS files, and enforces rendered invariants for Newt's critical
-Pangolin host aliases.
-
-## How secrets work (SOPS + age + KSOPS)
-
-1. **SOPS** encrypts selected fields (`data` / `stringData`) in `*.sops.yaml` files using age public keys.
-2. **age** keys: Argo CD holds a private key (Secret `sops-age` in `argocd`) for local decrypt automation; you hold a personal private key for edit/encrypt.
-3. **KSOPS** is a Kustomize generator plugin. Argo CD runs it so encrypted Secret manifests are decrypted at apply time — plaintext never lives in git.
-
-### Encrypt a new secret
-
-Write the Secret YAML with plaintext `stringData` (file name must match `*.sops.yaml` so `.sops.yaml` creation rules apply), then:
-
-```bash
-# Example: vaultwarden admin token
-# 1. Edit plaintext (before first encrypt):
-#    stringData.ADMIN_TOKEN: "<your token>"
-#    Generate a token:  openssl rand -base64 48
-#    Or argon2 hash:    docker run --rm -it vaultwarden/server:1.37.1 /vaultwarden hash
-
-sops --encrypt --in-place apps/vaultwarden/manifests/secret.sops.yaml
-git add apps/vaultwarden/manifests/secret.sops.yaml
-```
-
-Requires `sops` and age private keys matching the public keys in `.sops.yaml` (personal key for encrypt/edit; Argo uses `sops-age` in-cluster).
-
-### Edit an existing encrypted secret
-
-```bash
-sops apps/vaultwarden/manifests/secret.sops.yaml
-```
-
-## Open items / reminders
-
-- [ ] **Monitoring stack** — disabled in app-of-apps; re-enable when resources allow.
-  SMTP still in `monitoring-config` SOPS if you bring it back.
-- [ ] **Test-restore a backup quarterly** — see docs/disaster-recovery.md "Ongoing hygiene".
-- [ ] **Pangolin / Newt**: wire Newt to in-cluster services (e.g. Actual Budget, Vaultwarden).
-- [ ] Chart pins today: Longhorn `1.12.1`, kube-prometheus-stack `88.5.3`, Argo CD `v3.5.1` (ref in `infrastructure/argocd/manifests/kustomization.yaml`) — bump deliberately, one minor at a time for Longhorn, reading release notes first.
-- [ ] **Offline copy of personal age key** — it is the recovery root for encrypted backups AND all SOPS secrets. Verify you can locate it.
-- [ ] The `hostAliases` IP `172.20.0.7` (Pangolin LAN address) is hardcoded in both Newt deployments — update there if the Pangolin server moves.
-- [x] **Argo CD ↔ git access**: public HTTPS, no credentials required.
-- [x] **No MetalLB**: external access via Pangolin + Newt to ClusterIP services.
-- [x] **SOPS in Argo**: KSOPS plugin + `sops-age` secret — now GitOps-managed (`infrastructure/argocd`); `sops-age` itself stays manual by design.
-- [x] **Backup target**: Garage bucket + credentials configured; daily/weekly/monthly S3 block backups scheduled (no local-only snapshot job).
-- [x] **Volumes on `longhorn-encrypted`** — apps use encrypted PVCs.
-
+The workflow is defined in [`.github/workflows/validate.yaml`](.github/workflows/validate.yaml), with repository-specific checks under [`scripts/`](scripts/).
