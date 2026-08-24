@@ -16,6 +16,7 @@ resources:
   - lubelogger/application.yaml
   - mealie/application.yaml
   - newt/application.yaml
+  - omnitools/application.yaml
   - teslamate/application.yaml
   - tooltracker/application.yaml
   - vaultwarden/application.yaml

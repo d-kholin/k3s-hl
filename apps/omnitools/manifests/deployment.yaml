@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnitools
+  namespace: omnitools
+  labels:
+    app: omnitools
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: omnitools
+      app.kubernetes.io/name: omnitools
+  template:
+    metadata:
+      labels:
+        app: omnitools
+        app.kubernetes.io/name: omnitools
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: omnitools
+          image: iib0011/omni-tools:0.6.0
+          imagePullPolicy: IfNotPresent
+          # Bypass the root-oriented image entrypoint and use the hardened
+          # high-port nginx configuration mounted below.
+          command:
+            - nginx
+          args:
+            - -g
+            - daemon off;
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: omnitools-nginx
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,23 @@
+# Argo CD Application for OmniTools (client-side utility collection).
+# Workload path: apps/omnitools/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: omnitools
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/omnitools/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: omnitools
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
