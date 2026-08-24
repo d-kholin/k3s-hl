@@ -1,0 +1,23 @@
+# Argo CD Application for BentoPDF (client-side PDF toolkit).
+# Workload path: apps/bentopdf/manifests
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bentopdf
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/d-kholin/k3s-hl.git
+    targetRevision: HEAD
+    path: apps/bentopdf/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: bentopdf
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
