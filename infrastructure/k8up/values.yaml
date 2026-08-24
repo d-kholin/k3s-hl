@@ -36,11 +36,3 @@ k8up:
     requests:
       cpu: 50m
       memory: 128Mi
-
-metrics:
-  service:
-    port: 8080
-  # The ServiceMonitor lives in monitoring-config (same pattern as Longhorn)
-  # so CRD ordering stays out of this chart sync.
-  serviceMonitor:
-    enabled: false
