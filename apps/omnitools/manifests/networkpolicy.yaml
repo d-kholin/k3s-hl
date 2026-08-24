@@ -1,0 +1,30 @@
+# Default-deny ingress; only the Newt tunnel pods may reach OmniTools.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: omnitools
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-newt-ingress
+  namespace: omnitools
+spec:
+  podSelector:
+    matchLabels:
+      app: omnitools
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: newt
+      ports:
+        - protocol: TCP
+          port: 8080
