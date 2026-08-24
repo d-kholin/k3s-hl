@@ -41,11 +41,19 @@ Replace all four placeholder values:
 - `email-username`
 - `email-password`
 
-Then edit
-`infrastructure/argocd/manifests/argocd-notifications-cm-patch.yaml` and replace
-`CHANGE_ME@example.com` with the destination address. The starting SMTP port is
-587. Change `port` to 465 if the provider requires implicit TLS. Certificate
-verification remains enabled.
+Open the encrypted subscription ConfigMap and replace
+`CHANGE_ME@example.com` with the destination address:
+
+```bash
+sops infrastructure/argocd/managed/argocd-notifications-subscriptions.sops.yaml
+```
+
+The starting SMTP port in
+`infrastructure/argocd/manifests/argocd-notifications-cm-patch.yaml` is 587.
+Change `port` to 465 if the provider requires implicit TLS. Certificate
+verification remains enabled. The destination is decrypted into the live Argo
+CD ConfigMap because Argo requires a literal subscription recipient, but it
+remains encrypted in Git.
 
 Commit both files together and let the `argocd` Application reconcile them.
 Inspect controller startup and delivery errors with:

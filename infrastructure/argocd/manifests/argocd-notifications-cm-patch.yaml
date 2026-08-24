@@ -1,8 +1,8 @@
 # Argo CD's upstream install already includes the notifications controller.
 # This patch configures a lightweight, email-only policy for every Application.
 #
-# Before enabling delivery, replace CHANGE_ME@example.com below and populate the
-# encrypted values in ../managed/argocd-notifications-secret.sops.yaml.
+# SMTP credentials and the destination subscription are both supplied by the
+# SOPS-encrypted resources in ../managed/.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -15,15 +15,6 @@ data:
     username: $email-username
     password: $email-password
     insecure_skip_verify: false
-
-  subscriptions: |
-    - recipients:
-        - email:CHANGE_ME@example.com
-      triggers:
-        - on-health-degraded
-        - on-health-degraded-escalated
-        - on-sync-failed
-        - on-sync-status-unknown
 
   template.app-health-degraded: |
     email:

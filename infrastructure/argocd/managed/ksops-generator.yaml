@@ -9,3 +9,4 @@ metadata:
         path: ksops
 files:
   - ./argocd-notifications-secret.sops.yaml
+  - ./argocd-notifications-subscriptions.sops.yaml
