@@ -39,8 +39,10 @@ kubectl apply -k infrastructure/argocd/manifests
 kubectl -n argocd rollout status deploy/argocd-repo-server
 ```
 
-This is the same kustomization Argo CD later manages itself with, so the
-bootstrap install and the GitOps-managed install are identical.
+This plugin-free base is also included by the GitOps-managed Argo CD overlay.
+After the `sops-age` Secret is restored, that overlay adds only the encrypted
+SMTP settings through KSOPS; the controller installation and patches remain
+identical to bootstrap.
 
 ### 3. The one manual secret: sops-age
 

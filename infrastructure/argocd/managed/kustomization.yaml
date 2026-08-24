@@ -1,0 +1,11 @@
+# GitOps-managed Argo CD overlay. The manifests/ base intentionally remains
+# free of generators so `kubectl apply -k` can bootstrap a fresh cluster before
+# the KSOPS-enabled repo server exists.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../manifests
+
+generators:
+  - ksops-generator.yaml

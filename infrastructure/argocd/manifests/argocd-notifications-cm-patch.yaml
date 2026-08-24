@@ -1,0 +1,113 @@
+# Argo CD's upstream install already includes the notifications controller.
+# This patch configures a lightweight, email-only policy for every Application.
+#
+# Before enabling delivery, replace CHANGE_ME@example.com below and populate the
+# encrypted values in ../managed/argocd-notifications-secret.sops.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+data:
+  service.email: |
+    host: $email-host
+    port: 587
+    from: $email-from
+    username: $email-username
+    password: $email-password
+    insecure_skip_verify: false
+
+  subscriptions: |
+    - recipients:
+        - email:CHANGE_ME@example.com
+      triggers:
+        - on-health-degraded
+        - on-health-degraded-escalated
+        - on-sync-failed
+        - on-sync-status-unknown
+
+  template.app-health-degraded: |
+    email:
+      subject: "[k3s] DEGRADED: {{.app.metadata.name}} (5 minutes)"
+    message: |
+      Application {{.app.metadata.name}} has remained Degraded for at least 5 minutes.
+
+      Health: {{.app.status.health.status}}
+      Degraded since: {{.app.status.health.lastTransitionTime}}
+      Application: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+
+      Conditions:
+      {{range $condition := .app.status.conditions}}- {{$condition.type}}: {{$condition.message}}
+      {{end}}
+
+  template.app-health-degraded-escalated: |
+    email:
+      subject: "[k3s] STILL DEGRADED: {{.app.metadata.name}} (1 hour)"
+    message: |
+      Application {{.app.metadata.name}} has remained Degraded for at least 1 hour.
+
+      Health: {{.app.status.health.status}}
+      Degraded since: {{.app.status.health.lastTransitionTime}}
+      Application: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+
+      Conditions:
+      {{range $condition := .app.status.conditions}}- {{$condition.type}}: {{$condition.message}}
+      {{end}}
+
+  template.app-sync-failed: |
+    email:
+      subject: "[k3s] SYNC FAILED: {{.app.metadata.name}}"
+    message: |
+      Argo CD failed to sync application {{.app.metadata.name}}.
+
+      Finished: {{.app.status.operationState.finishedAt}}
+      Error: {{.app.status.operationState.message}}
+      Operation: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true
+
+  template.app-sync-status-unknown: |
+    email:
+      subject: "[k3s] SYNC UNKNOWN: {{.app.metadata.name}}"
+    message: |
+      Argo CD cannot determine the sync status of application {{.app.metadata.name}}.
+
+      Application: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+
+      Conditions:
+      {{range $condition := .app.status.conditions}}- {{$condition.type}}: {{$condition.message}}
+      {{end}}
+
+  trigger.on-health-degraded: |
+    - description: Application has remained Degraded for 5 minutes.
+      send:
+        - app-health-degraded
+      oncePer: app.status.health.lastTransitionTime
+      when: >-
+        app.status.health.status == 'Degraded' and
+        app.status.health.lastTransitionTime != nil and
+        time.Now().Sub(time.Parse(app.status.health.lastTransitionTime)).Minutes() >= 5 and
+        time.Now().Sub(time.Parse(app.status.health.lastTransitionTime)).Minutes() < 60
+
+  trigger.on-health-degraded-escalated: |
+    - description: Application has remained Degraded for 1 hour.
+      send:
+        - app-health-degraded-escalated
+      oncePer: app.status.health.lastTransitionTime
+      when: >-
+        app.status.health.status == 'Degraded' and
+        app.status.health.lastTransitionTime != nil and
+        time.Now().Sub(time.Parse(app.status.health.lastTransitionTime)).Hours() >= 1
+
+  trigger.on-sync-failed: |
+    - description: Application synchronization failed.
+      send:
+        - app-sync-failed
+      oncePer: app.status.operationState?.finishedAt
+      when: >-
+        app.status.operationState != nil and
+        app.status.operationState.phase in ['Error', 'Failed']
+
+  trigger.on-sync-status-unknown: |
+    - description: Application sync status is Unknown.
+      send:
+        - app-sync-status-unknown
+      oncePer: app.status.operationState?.syncResult?.revision
+      when: app.status.sync.status == 'Unknown'

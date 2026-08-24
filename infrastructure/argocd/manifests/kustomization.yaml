@@ -17,4 +17,5 @@ resources:
 patches:
   - path: argocd-cm-patch.yaml
   - path: argocd-cmd-params-cm-patch.yaml
+  - path: argocd-notifications-cm-patch.yaml
   - path: repo-server-ksops-patch.yaml
