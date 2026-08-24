@@ -18,7 +18,7 @@ Git repository
 - **Storage:** Longhorn supplies replicated persistent volumes. The default StorageClass encrypts volumes with dm-crypt and retains them when claims are removed.
 - **Secrets:** SOPS encrypts secrets with age before they enter Git. Argo CD uses KSOPS to decrypt them only while rendering manifests.
 - **Backups:** Longhorn provides block-level disaster-recovery backups, while K8up provides file- and database-level restic backups.
-- **Observability:** Monitoring manifests are retained in the repository but are currently excluded from reconciliation to conserve cluster resources.
+- **Observability:** Argo CD Notifications provides lightweight email alerting for application health and sync failures. Node availability still requires an out-of-cluster check.
 
 ## Repository structure
 
@@ -84,12 +84,10 @@ To add a workload, create its Application and manifests, then add `apps/<workloa
 
 The active infrastructure layer provides:
 
-- Argo CD, including the KSOPS integration used to render encrypted manifests.
+- Argo CD, including KSOPS secret rendering and email notifications for unhealthy Applications.
 - Longhorn, an encrypted default StorageClass, snapshot support, and recurring block backups.
 - K8up and shared backup-target configuration for restic-based workload backups.
 - Custom CoreDNS configuration needed for private cluster dependencies.
-
-Optional monitoring resources remain under `infrastructure/monitoring/` and `infrastructure/monitoring-config/`, but are not listed in `infrastructure/kustomization.yaml` and therefore are not currently deployed.
 
 ## Storage, backups, and recovery
 
@@ -107,6 +105,7 @@ See the runbooks for operational detail:
 - [Backup architecture and restore procedures](docs/backups.md)
 - [Full-cluster disaster recovery](docs/disaster-recovery.md)
 - [Encrypted-volume migration](docs/encrypted-volume-migration.md)
+- [Monitoring and Argo CD email notifications](docs/monitoring.md)
 
 ## Secrets
 

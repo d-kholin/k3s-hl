@@ -1,4 +1,4 @@
-# Argo CD manages itself: stock v3.5.0 install.yaml + the KSOPS repo-server
+# Argo CD manages itself: stock v3.5.1 install.yaml + the KSOPS repo-server
 # patch and config that were previously hand-applied (and therefore invisible
 # to GitOps / lost on cluster rebuild). Bootstrap order for a fresh cluster
 # lives in docs/disaster-recovery.md.
@@ -22,7 +22,9 @@ spec:
   source:
     repoURL: https://github.com/d-kholin/k3s-hl.git
     targetRevision: HEAD
-    path: infrastructure/argocd/manifests
+    # The managed overlay adds the SOPS-encrypted notifications Secret. The
+    # plugin-free manifests/ base remains usable for first-install bootstrap.
+    path: infrastructure/argocd/managed
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

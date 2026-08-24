@@ -129,9 +129,3 @@ garage bucket allow --read --write naku-k8up --key naku-k8up
 
 (Write access includes delete — prune runs from the cluster.) The key goes
 into `global-secret.sops.yaml`; repos are auto-initialized on first backup.
-
-## Monitoring
-
-Optional kube-prometheus-stack + `monitoring-config` (K8up/Longhorn rules) is
-**not deployed** right now — see README. Re-enable via
-`infrastructure/kustomization.yaml` when you want cluster metrics/alerts again.

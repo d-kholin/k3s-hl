@@ -1,0 +1,12 @@
+# Decrypt and merge SMTP settings into Argo CD's standard notifications Secret.
+apiVersion: viaduct.ai/v1
+kind: ksops
+metadata:
+  name: argocd-notifications-secret-generator
+  annotations:
+    config.kubernetes.io/function: |
+      exec:
+        path: ksops
+files:
+  - ./argocd-notifications-secret.sops.yaml
+  - ./argocd-notifications-subscriptions.sops.yaml

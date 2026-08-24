@@ -1,0 +1,51 @@
+# Global email destination for Argo CD Notifications.
+# Edit in place with:
+#   sops infrastructure/argocd/managed/argocd-notifications-subscriptions.sops.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: argocd-notifications-cm
+    namespace: argocd
+    annotations:
+        # Merge the encrypted subscription into the upstream notifications ConfigMap.
+        kustomize.config.k8s.io/behavior: merge
+data:
+    subscriptions: ENC[AES256_GCM,data:08RJr1yPPxsfI5JkEG8AHwxiCYAqqVpMBUJBEZRvCTODg6CULV3G1XC+VdrngoO+SNlheBAnsiqYoqoXOipqZPXzXRIhQlOshqd2mv7GSXz003pcD7y4WS07WTSNcsT0hThfPXa0yKKa4COW6wHKmzbaz3CjAMnHU1SgeHYD1fz4Ro5udp+zcd4g5uCQKc1FPGGLblBKUsvbGhxr1QEC1X9spY+7FvPDdXnuWA==,iv:x8lY5T3tC34tM5Xw7BGcTaNBRQ4r7590lnAOAXF55xs=,tag:v7xxIV4n/7DkGH1dpNOZ7A==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1u897l89mkwn8jpwckjaln0fw50thp7mfs2c78cx0aw48slfyu5nsvvt4ft
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSA5bENBVThNVEJZRCtnSmlY
+            eEFGZFZsalJxcnlMRmVwdVhQN1dkYXhGM1VRCllZUlQzNUtFTHdORk9OOTlrSEFP
+            UG8zcXdEQU1WK003L2NOdWIvUjRlQkkKLS0tIEFSWkN2ME1MNy9SUVRLV1l6ZHJ4
+            U1drU3p3L0NseFpkdnMwSkhYcFVUOUEKxe3Xca8AZW1RCMvHgAkRlLLSBdR2/dVl
+            Q+AO4ttRgi+E4BiaFelHMX+xNRwhduD7so4AIxdqdpEZuq7K4w+OZA==
+            -----END AGE ENCRYPTED FILE-----
+        - recipient: age1gn97pnarxh3wkdv2l8ynk6s7ted0u5hgudhxyfec2djwy3dsapsss2ak8p
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBQRzJxeEwrQUZaZEg1NEpn
+            SFhTaE92Zk1tUUY0TS9hRjlMeE1xZkxCSDBRClJJelp4cFphZGJjKzFrbnZzbTFI
+            NkQ0b1A1Q0tDbWFQcFZuK3NTYTlIM2sKLS0tIGdTRnhWZ1VVbmI1RUwzQlFlTDRJ
+            bzNoNVhLYUNlQVNFaG5JNW91Y015MTAK1l1eAH7cVPQ6UzFxO58tOaoPnt1dB6wF
+            lIMwgA5jS2RA1kvJ4ows+HZe1HKX/LMxUrZGA9RjXvSwJ17q9jNuqw==
+            -----END AGE ENCRYPTED FILE-----
+        - recipient: age1epz74rx38txrvhxxp4lq43lca6kg2yg0a5ay3pkhshfwgwx2dexsvj9vvz
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAxbFFuL1l6NVlXaWh2eTk3
+            a2dlaG0xRXI5UWU0OG1Ob2p6RkRtK3g4emhNCmswWm8xcnp0a04xQWkzcnFlbWgw
+            UG5wRkYxUjI0SjdhWklrMkVrVGM4WVkKLS0tIFVVY2h2WHZhMzdqMGVjS1NFVm90
+            SUZsVG52Y0xnUXErcGdPRmtrN2ltZ2sKpiuAW/PvRP97uFr4pOJJUZgf5kGtgsr5
+            8bypCkgiMrDCCSmEANhGEHh/SOUsG0sUstpY0dhRGW3Um/wimHgrfQ==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-08-24T19:53:40Z"
+    mac: ENC[AES256_GCM,data:Jrc+T5rqZMkFRSrVfe4gSQuY7de6CLiQd99MKUDri6zpfJeB8J5ROJI/4oCI8CmbnsFqKQLaMvLWoMiBm3Jgk/9qT+kXIwRSZCyKmpWVTrBCzYD/GHgN8T/suLjRNRQno2ZerYRCrqXmDEJL1G0ieeomRMdwoEO5OtCiVO+if/M=,iv:W2vIq/0D/7NMEVanPgyOj0S7pdpRbXlnIQyVApKhPdY=,tag:jRuvbkvA81P40IcOXBgnuw==,type:str]
+    pgp: []
+    encrypted_regex: ^(data|stringData)$
+    version: 3.7.3
