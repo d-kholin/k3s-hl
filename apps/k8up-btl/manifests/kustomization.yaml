@@ -7,4 +7,4 @@ resources:
   - https://github.com/d-kholin/k8up-btl//deploy/k8s?ref=v1.10.0
 images:
   - name: ghcr.io/d-kholin/k8up-btl
-    newTag: "1.10.0"
+    newTag: "1.11.0"
