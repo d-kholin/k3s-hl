@@ -13,4 +13,4 @@ spec:
   storageClassName: longhorn-encrypted
   resources:
     requests:
-      storage: 32Gi
+      storage: 1Gi
