@@ -23,6 +23,10 @@ spec:
         app: paperless
         app.kubernetes.io/name: paperless
     spec:
+      # The service is named "paperless", so Kubernetes would inject
+      # PAPERLESS_PORT=tcp://<ip>:8000 — which paperless-ngx reads as its web
+      # server port setting and crash-loops on.
+      enableServiceLinks: false
       # Restricted PSA compliant. Paperless-ngx documents running the image
       # as an arbitrary non-root user: s6 skips its chown/setuid init steps
       # and USERMAP_UID/GID are ignored. uid 1000 matches the compose host's
@@ -35,6 +39,30 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # s6-overlay's preinit requires /run to be owned by the running uid,
+        # but an emptyDir is root-owned and we can't chown as non-root. A
+        # directory created *inside* the emptyDir by this init container is
+        # owned by uid 1000; the main container mounts it at /run via subPath.
+        - name: init-run
+          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "mkdir -p /run-vol/run"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: run
+              mountPath: /run-vol
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
       containers:
         - name: paperless
           image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
@@ -119,6 +147,11 @@ spec:
             # OCR scratch space (ocrmypdf works under /tmp).
             - name: tmp
               mountPath: /tmp
+            # uid-1000-owned dir prepared by the init container — s6-overlay
+            # refuses to start if /run isn't owned by the running user.
+            - name: run
+              mountPath: /run
+              subPath: run
           # Mirrors the compose healthcheck.
           startupProbe:
             exec:
@@ -160,4 +193,6 @@ spec:
           persistentVolumeClaim:
             claimName: paperless-data-encrypted
         - name: tmp
+          emptyDir: {}
+        - name: run
           emptyDir: {}

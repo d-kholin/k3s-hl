@@ -26,8 +26,10 @@ spec:
           type: RuntimeDefault
       containers:
         - name: tika
-          # Same version the compose host's :latest resolved to.
-          image: ghcr.io/paperless-ngx/tika:2.9.1-minimal
+          # Same version the compose host's :latest resolved to. Upstream
+          # image: the ghcr.io/paperless-ngx/tika mirror 403s anonymous pulls
+          # now (paperless-ngx switched its compose files to apache/tika too).
+          image: docker.io/apache/tika:2.9.1.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: tika
