@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: paperless
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+      annotations:
+        # K8up execs this on every backup run and stores stdout in the restic
+        # repo as /paperless-postgres.sql. Restore via `restic dump ... | psql`
+        # — the Restore CRD can't restore stdin-based snapshots. See
+        # docs/backups.md.
+        k8up.io/backupcommand: sh -c 'PGDATABASE=paperless PGUSER="$POSTGRES_USER" PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --clean --if-exists'
+        k8up.io/file-extension: .sql
+    spec:
+      # Restricted PSA compliant. The postgres image normally starts as root
+      # and drops to uid 999; starting directly as 999 skips the drop and runs
+      # initdb/postgres as that user.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          # 18.x matches the compose host, so the migration dump restores
+          # without a major-version jump.
+          image: postgres:18.6
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: paperless
+            - name: POSTGRES_DB
+              value: paperless
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: POSTGRES_PASSWORD
+            # Subdirectory of the mount — initdb refuses a data dir that isn't
+            # empty (the volume root holds lost+found / fsGroup metadata).
+            # Matches the postgres:18 image default (versioned path).
+            - name: PGDATA
+              value: /var/lib/postgresql/18/docker
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # The 18 image moved its volume mount point up to
+            # /var/lib/postgresql (PGDATA is a versioned subdir).
+            - name: pgdata
+              mountPath: /var/lib/postgresql
+            # Unix socket dir and scratch space — writable despite the
+            # read-only root filesystem.
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+            # Parallel workers / sorts exhaust the 64Mi container default.
+            - name: dshm
+              mountPath: /dev/shm
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - paperless
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - paperless
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: paperless-pgdata-encrypted
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi

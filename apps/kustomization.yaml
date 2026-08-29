@@ -18,6 +18,7 @@ resources:
   - mealie/application.yaml
   - newt/application.yaml
   - omnitools/application.yaml
+  - paperless/application.yaml
   - teslamate/application.yaml
   - tooltracker/application.yaml
   - vaultwarden/application.yaml

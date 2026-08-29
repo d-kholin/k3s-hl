@@ -1,0 +1,19 @@
+# One PVC serves data/, media/, consume/ and export/ via subPaths — all four
+# are only ever mounted by the single paperless pod, and current usage is
+# ~400Mi (data + media) so 2Gi leaves ~4x headroom without oversizing.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-data-encrypted
+  namespace: paperless
+  annotations:
+    # Never let Argo delete this PVC (prune or app deletion) — the document
+    # originals/archive (media), search index and classifier model live here.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 2Gi

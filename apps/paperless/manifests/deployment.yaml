@@ -1,0 +1,163 @@
+# Paperless-ngx webserver. The single container runs the whole app stack
+# (gunicorn, celery worker/beat, consumer) under s6-overlay, matching the
+# upstream compose file's "webserver" service.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless
+  namespace: paperless
+  labels:
+    app: paperless
+spec:
+  replicas: 1
+  # RWO volume — avoid multi-attach by never rolling two pods
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: paperless
+      app.kubernetes.io/name: paperless
+  template:
+    metadata:
+      labels:
+        app: paperless
+        app.kubernetes.io/name: paperless
+    spec:
+      # Restricted PSA compliant. Paperless-ngx documents running the image
+      # as an arbitrary non-root user: s6 skips its chown/setuid init steps
+      # and USERMAP_UID/GID are ignored. uid 1000 matches the compose host's
+      # USERMAP_UID, so migrated files keep working ownership.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: paperless
+          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: PAPERLESS_REDIS
+              value: redis://redis:6379
+            - name: PAPERLESS_DBHOST
+              value: postgres
+            - name: PAPERLESS_DBNAME
+              value: paperless
+            - name: PAPERLESS_DBUSER
+              value: paperless
+            - name: PAPERLESS_DBPASS
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: POSTGRES_PASSWORD
+            # Django session/CSRF signing key — the compose host ran on the
+            # image default; set a real one here (sessions reset once).
+            - name: PAPERLESS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: PAPERLESS_SECRET_KEY
+            # Public base URL — tenant-identifying, so it lives in the SOPS
+            # secret. Keep in sync with the Pangolin resource URL.
+            - name: PAPERLESS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: PAPERLESS_URL
+            # OIDC SSO via allauth — contains the IdP hostname and client
+            # secret, so the whole JSON blob lives in the SOPS secret.
+            - name: PAPERLESS_APPS
+              value: allauth.socialaccount.providers.openid_connect
+            - name: PAPERLESS_SOCIALACCOUNT_PROVIDERS
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: PAPERLESS_SOCIALACCOUNT_PROVIDERS
+            - name: PAPERLESS_TIKA_ENABLED
+              value: "true"
+            - name: PAPERLESS_TIKA_ENDPOINT
+              value: http://tika:9998
+            - name: PAPERLESS_TIKA_GOTENBERG_ENDPOINT
+              value: http://gotenberg:3000
+            - name: PAPERLESS_OCR_USER_ARGS
+              value: '{"invalidate_digital_signatures": true}'
+            - name: PAPERLESS_EMAIL_TASK_CRON
+              value: "*/2 * * * *"
+          securityContext:
+            allowPrivilegeEscalation: false
+            # Writable root filesystem is required: s6-overlay populates /run
+            # at init and the app writes scratch files outside the mounted
+            # dirs.
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # Search index + document classifier model.
+            - name: data
+              mountPath: /usr/src/paperless/data
+              subPath: data
+            # Document originals, archived PDFs, thumbnails.
+            - name: data
+              mountPath: /usr/src/paperless/media
+              subPath: media
+            # Drop-dir ingestion, polled by the consumer.
+            - name: data
+              mountPath: /usr/src/paperless/consume
+              subPath: consume
+            # document_exporter output (ad hoc / migration).
+            - name: data
+              mountPath: /usr/src/paperless/export
+              subPath: export
+            # OCR scratch space (ocrmypdf works under /tmp).
+            - name: tmp
+              mountPath: /tmp
+          # Mirrors the compose healthcheck.
+          startupProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -fs -S --max-time 2 http://localhost:8000
+            # First boot runs migrations; allow up to 5 minutes.
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -fs -S --max-time 2 http://localhost:8000
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - curl -fs -S --max-time 2 http://localhost:8000
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              # OCR (ghostscript + tesseract) spikes on large scans — a tight
+              # memory limit would OOM-kill mid-consume.
+              cpu: 2000m
+              memory: 3Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperless-data-encrypted
+        - name: tmp
+          emptyDir: {}
