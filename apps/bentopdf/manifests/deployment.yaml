@@ -31,7 +31,7 @@ spec:
         - name: bentopdf
           # The simple image includes every PDF tool without the public-site
           # marketing content. Files are processed entirely in the browser.
-          image: ghcr.io/alam00000/bentopdf-simple:v2.8.7
+          image: ghcr.io/alam00000/bentopdf-simple:2.8.8
           imagePullPolicy: IfNotPresent
           # Skip entrypoint scripts that expect to mutate the image filesystem;
           # the baked nginx configuration already listens on port 8080 and
