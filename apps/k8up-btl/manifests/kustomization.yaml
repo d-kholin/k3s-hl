@@ -4,11 +4,11 @@ kind: Kustomization
 # release, so RBAC/env changes ship with every version bump. Renovate bumps
 # both the ?ref= and the image tag (kustomize manager).
 resources:
-  - https://github.com/d-kholin/k8up-btl//deploy/k8s?ref=v1.13.0
+  - https://github.com/d-kholin/k8up-btl//deploy/k8s?ref=v1.14.0
   # Restore Lab scaffolding (docs/restore-lab.md in k8up-btl): restore-lab
   # namespace, destination-locked AppProject, default-deny ingress+egress
   # NetworkPolicies, and the lab's namespace-scoped RBAC.
-  - https://github.com/d-kholin/k8up-btl//deploy/k8s/restore-lab?ref=v1.13.0
+  - https://github.com/d-kholin/k8up-btl//deploy/k8s/restore-lab?ref=v1.14.0
 images:
   - name: ghcr.io/d-kholin/k8up-btl
     newTag: "1.14.0"
