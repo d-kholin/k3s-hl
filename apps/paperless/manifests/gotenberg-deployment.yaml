@@ -26,7 +26,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: gotenberg
-          image: gotenberg/gotenberg:8.35
+          image: gotenberg/gotenberg:8.36
           imagePullPolicy: IfNotPresent
           # Matches the compose host's hardening flag (image entrypoint is
           # tini, so args replace the compose `command`).
