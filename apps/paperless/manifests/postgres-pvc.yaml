@@ -1,0 +1,22 @@
+# The database is ~20Mi on the compose host; 1Gi covers pgdata + recycled WAL
+# with plenty of headroom.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-pgdata-encrypted
+  namespace: paperless
+  annotations:
+    # Never let Argo delete this PVC (prune or app deletion) — document
+    # metadata, tags, users and mail rules live here.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+    # Skip K8up's file backup — raw pgdata would be a torn copy. The nightly
+    # pg_dump (see postgres-deployment.yaml) is the usable backup; weekly
+    # Longhorn block backups cover whole-volume DR.
+    k8up.io/backup: "false"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 1Gi

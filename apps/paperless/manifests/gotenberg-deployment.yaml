@@ -1,0 +1,75 @@
+# Gotenberg — office/HTML → PDF conversion (used via Tika). Stateless.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gotenberg
+  namespace: paperless
+  labels:
+    app: gotenberg
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gotenberg
+  template:
+    metadata:
+      labels:
+        app: gotenberg
+    spec:
+      # Restricted PSA compliant; the image already runs as its own non-root
+      # user (uid 1001), pinned here so admission can verify it.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gotenberg
+          image: gotenberg/gotenberg:8.35
+          imagePullPolicy: IfNotPresent
+          # Matches the compose host's hardening flag (image entrypoint is
+          # tini, so args replace the compose `command`).
+          args:
+            - gotenberg
+            - --chromium-disable-javascript=true
+          ports:
+            - name: gotenberg
+              containerPort: 3000
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            # Chromium/LibreOffice conversion scratch space — writable despite
+            # the read-only root filesystem.
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: gotenberg
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: gotenberg
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              # Chromium spikes during conversions.
+              cpu: 1000m
+              memory: 1Gi
+      volumes:
+        - name: tmp
+          emptyDir: {}
