@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: ghcr.io/d-kholin/freezerstock-frontend:v1.1.5
+          image: ghcr.io/d-kholin/freezerstock-frontend:v1.2.0
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
