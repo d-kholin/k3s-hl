@@ -11,7 +11,7 @@ resources:
   - https://github.com/d-kholin/k8up-btl//deploy/k8s/restore-lab?ref=v1.17.0
 images:
   - name: ghcr.io/d-kholin/k8up-btl
-    newTag: "1.17.0"
+    newTag: "1.17.1"
 patches:
   # Enable the Restore Lab in the backend (empty = feature off).
   - target:
