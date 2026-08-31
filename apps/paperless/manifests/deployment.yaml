@@ -45,7 +45,7 @@ spec:
         # directory created *inside* the emptyDir by this init container is
         # owned by uid 1000; the main container mounts it at /run via subPath.
         - name: init-run
-          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+          image: ghcr.io/paperless-ngx/paperless-ngx:3.1.1
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "mkdir -p /run-vol/run"]
           securityContext:
@@ -65,7 +65,7 @@ spec:
               memory: 128Mi
       containers:
         - name: paperless
-          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+          image: ghcr.io/paperless-ngx/paperless-ngx:3.1.1
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -74,6 +74,10 @@ spec:
           env:
             - name: PAPERLESS_REDIS
               value: redis://redis:6379
+            # v3 no longer infers the engine from PAPERLESS_DBHOST; without
+            # this it silently falls back to SQLite.
+            - name: PAPERLESS_DBENGINE
+              value: postgresql
             - name: PAPERLESS_DBHOST
               value: postgres
             - name: PAPERLESS_DBNAME
@@ -118,6 +122,17 @@ spec:
               value: '{"invalidate_digital_signatures": true}'
             - name: PAPERLESS_EMAIL_TASK_CRON
               value: "*/2 * * * *"
+            # v3 accepts duplicate documents by default; restore the v2
+            # reject-duplicates behavior.
+            - name: PAPERLESS_CONSUMER_DELETE_DUPLICATES
+              value: "true"
+            # Reverse proxy IP trusted for client-IP headers (v3 allauth) —
+            # internal topology, so it lives in the SOPS secret.
+            - name: PAPERLESS_TRUSTED_PROXIES
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: PAPERLESS_TRUSTED_PROXIES
           securityContext:
             allowPrivilegeEscalation: false
             # Writable root filesystem is required: s6-overlay populates /run
@@ -159,9 +174,11 @@ spec:
                 - sh
                 - -c
                 - curl -fs -S --max-time 2 http://localhost:8000
-            # First boot runs migrations; allow up to 5 minutes.
+            # First boot runs migrations; the v2→v3 upgrade also recomputes
+            # all document checksums (MD5→SHA256) and rebuilds the search
+            # index (Whoosh→Tantivy), so allow up to 15 minutes.
             periodSeconds: 10
-            failureThreshold: 30
+            failureThreshold: 90
             timeoutSeconds: 10
           readinessProbe:
             exec:
