@@ -45,7 +45,7 @@ spec:
         # directory created *inside* the emptyDir by this init container is
         # owned by uid 1000; the main container mounts it at /run via subPath.
         - name: init-run
-          image: ghcr.io/paperless-ngx/paperless-ngx:3.1.1
+          image: ghcr.io/paperless-ngx/paperless-ngx:3.1.2
           imagePullPolicy: IfNotPresent
           command: ["sh", "-c", "mkdir -p /run-vol/run"]
           securityContext:
@@ -65,7 +65,7 @@ spec:
               memory: 128Mi
       containers:
         - name: paperless
-          image: ghcr.io/paperless-ngx/paperless-ngx:3.1.1
+          image: ghcr.io/paperless-ngx/paperless-ngx:3.1.2
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
