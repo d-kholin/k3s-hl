@@ -13,6 +13,18 @@ images:
   - name: ghcr.io/d-kholin/k8up-btl
     newTag: "1.18.0"
 patches:
+  # Lab teardown switches retained PVs to Delete before deleting their PVCs.
+  # v1.18.0's remote lab role lacks patch; keep the correction in GitOps so
+  # self-heal does not undo it. Can be removed once the remote base includes it.
+  - target:
+      group: rbac.authorization.k8s.io
+      version: v1
+      kind: ClusterRole
+      name: k8up-btl-restore-lab
+    patch: |-
+      - op: replace
+        path: /rules/0/verbs
+        value: [get, list, patch, delete]
   # Enable the Restore Lab in the backend (empty = feature off).
   - target:
       kind: Deployment
