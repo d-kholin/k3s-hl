@@ -3,7 +3,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: default-deny-ingress
-  namespace: openwebui-mable
+  namespace: openwebui-mabel
 spec:
   podSelector: {}
   policyTypes:
@@ -13,11 +13,11 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-newt-ingress
-  namespace: openwebui-mable
+  namespace: openwebui-mabel
 spec:
   podSelector:
     matchLabels:
-      app: openwebui-mable
+      app: openwebui-mabel
   policyTypes:
     - Ingress
   ingress:

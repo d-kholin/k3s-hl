@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: openwebui-mable
+  name: openwebui-mabel
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,10 +10,10 @@ spec:
   source:
     repoURL: https://github.com/d-kholin/k3s-hl.git
     targetRevision: HEAD
-    path: apps/openwebui-mable/manifests
+    path: apps/openwebui-mabel/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: openwebui-mable
+    namespace: openwebui-mabel
   syncPolicy:
     automated:
       prune: true
