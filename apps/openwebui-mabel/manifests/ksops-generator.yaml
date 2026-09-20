@@ -2,7 +2,7 @@
 apiVersion: viaduct.ai/v1
 kind: ksops
 metadata:
-  name: openwebui-mable-secrets
+  name: openwebui-mabel-secrets
   annotations:
     config.kubernetes.io/function: |
       exec:

@@ -1,7 +1,7 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: openwebui-mable
+namespace: openwebui-mabel
 
 resources:
   - namespace.yaml
@@ -16,5 +16,5 @@ generators:
 
 labels:
   - pairs:
-      app.kubernetes.io/name: openwebui-mable
+      app.kubernetes.io/name: openwebui-mabel
     includeSelectors: false

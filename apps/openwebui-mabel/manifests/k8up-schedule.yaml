@@ -2,7 +2,7 @@ apiVersion: k8up.io/v1
 kind: PodConfig
 metadata:
   name: backup-pod
-  namespace: openwebui-mable
+  namespace: openwebui-mabel
 spec:
   template:
     spec:
@@ -26,13 +26,13 @@ apiVersion: k8up.io/v1
 kind: Schedule
 metadata:
   name: backup
-  namespace: openwebui-mable
+  namespace: openwebui-mabel
 spec:
   podConfigRef:
     name: backup-pod
   backend:
     s3:
-      bucket: naku-k8up/openwebui-mable
+      bucket: naku-k8up/openwebui-mabel
   backup:
     schedule: "59 */6 * * *"
     failedJobsHistoryLimit: 2

@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: openwebui-mable
-  namespace: openwebui-mable
+  name: openwebui-mabel
+  namespace: openwebui-mabel
   labels:
-    app: openwebui-mable
+    app: openwebui-mabel
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: openwebui-mable
-      app.kubernetes.io/name: openwebui-mable
+      app: openwebui-mabel
+      app.kubernetes.io/name: openwebui-mabel
   template:
     metadata:
       labels:
-        app: openwebui-mable
-        app.kubernetes.io/name: openwebui-mable
+        app: openwebui-mabel
+        app.kubernetes.io/name: openwebui-mabel
     spec:
       securityContext:
         runAsNonRoot: true
@@ -28,7 +28,7 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: openwebui-mable
+        - name: openwebui-mabel
           image: ghcr.io/open-webui/open-webui:v0.11.3
           imagePullPolicy: IfNotPresent
           ports:
@@ -45,17 +45,17 @@ spec:
             - name: OPENAI_API_BASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: openwebui-mable-secrets
+                  name: openwebui-mabel-secrets
                   key: HERMES_API_BASE_URL
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openwebui-mable-secrets
+                  name: openwebui-mabel-secrets
                   key: HERMES_API_KEY
             - name: WEBUI_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: openwebui-mable-secrets
+                  name: openwebui-mabel-secrets
                   key: WEBUI_SECRET_KEY
             - name: ENABLE_PERSISTENT_CONFIG
               value: "false"
@@ -100,6 +100,6 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: openwebui-mable-data-encrypted
+            claimName: openwebui-mabel-data-encrypted
         - name: tmp
           emptyDir: {}
