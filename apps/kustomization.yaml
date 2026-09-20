@@ -19,6 +19,7 @@ resources:
   - newt/application.yaml
   - omnitools/application.yaml
   - openwebui/application.yaml
+  - openwebui-mabel/application.yaml
   - paperless/application.yaml
   - teslamate/application.yaml
   - tooltracker/application.yaml

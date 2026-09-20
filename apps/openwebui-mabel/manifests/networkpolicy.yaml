@@ -1,0 +1,30 @@
+# Only the Newt tunnel may reach this Open WebUI instance.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: openwebui-mabel
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-newt-ingress
+  namespace: openwebui-mabel
+spec:
+  podSelector:
+    matchLabels:
+      app: openwebui-mabel
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: newt
+      ports:
+        - protocol: TCP
+          port: 8080

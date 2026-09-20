@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openwebui-mabel
+  namespace: openwebui-mabel
+  labels:
+    app: openwebui-mabel
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: openwebui-mabel
+      app.kubernetes.io/name: openwebui-mabel
+  template:
+    metadata:
+      labels:
+        app: openwebui-mabel
+        app.kubernetes.io/name: openwebui-mabel
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openwebui-mabel
+          image: ghcr.io/open-webui/open-webui:v0.11.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/Edmonton
+            - name: ENABLE_OLLAMA_API
+              value: "false"
+            - name: ENABLE_OPENAI_API
+              value: "true"
+            - name: OPENAI_API_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: HERMES_API_BASE_URL
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: HERMES_API_KEY
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: WEBUI_SECRET_KEY
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"
+            - name: HF_HOME
+              value: /app/backend/data/cache
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+            - name: tmp
+              mountPath: /tmp
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: openwebui-mabel-data-encrypted
+        - name: tmp
+          emptyDir: {}
