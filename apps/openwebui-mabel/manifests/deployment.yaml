@@ -57,6 +57,44 @@ spec:
                 secretKeyRef:
                   name: openwebui-mabel-secrets
                   key: WEBUI_SECRET_KEY
+            # Generic OpenID Connect. Keep environment values authoritative;
+            # local login remains available until SSO has been verified.
+            - name: ENABLE_OAUTH
+              value: "true"
+            - name: ENABLE_OAUTH_SIGNUP
+              value: "true"
+            - name: ENABLE_OAUTH_PERSISTENT_CONFIG
+              value: "false"
+            - name: WEBUI_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: WEBUI_URL
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: OAUTH_CLIENT_ID
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: OAUTH_CLIENT_SECRET
+            - name: OPENID_PROVIDER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: OPENID_PROVIDER_URL
+            - name: OAUTH_PROVIDER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: OAUTH_PROVIDER_NAME
+            - name: OPENID_REDIRECT_URI
+              valueFrom:
+                secretKeyRef:
+                  name: openwebui-mabel-secrets
+                  key: OPENID_REDIRECT_URI
             - name: ENABLE_PERSISTENT_CONFIG
               value: "false"
             - name: HF_HOME
