@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: openwebui-mable
+  namespace: openwebui-mable
+  labels:
+    app: openwebui-mable
+spec:
+  type: ClusterIP
+  selector:
+    app: openwebui-mable
+    app.kubernetes.io/name: openwebui-mable
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
