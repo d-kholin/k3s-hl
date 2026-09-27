@@ -33,7 +33,7 @@ spec:
     name: backup-pod
   backend:
     s3:
-      bucket: naku-k8up/openwebui
+      bucket: k8up-k3s/openwebui
   backup:
     schedule: "53 */6 * * *"
     failedJobsHistoryLimit: 2
