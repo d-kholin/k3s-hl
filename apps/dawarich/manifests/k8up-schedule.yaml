@@ -1,6 +1,6 @@
 # K8up backups for this namespace: a nightly restic backup of every PVC not
 # annotated k8up.io/backup=false, plus the k8up.io/backupcommand pg_dump (see
-# postgres-deployment.yaml), into the Garage bucket folder naku-k8up/dawarich
+# postgres-deployment.yaml), into the Backblaze B2 bucket folder k8up-k3s/dawarich
 # — a standard restic repo, browsable/restorable from any tailnet machine.
 # Endpoint, credentials, and repo password come from the operator globals
 # (k8up-global secret in the k8up namespace) — nothing app-specific here.
@@ -44,7 +44,7 @@ spec:
   backend:
     s3:
       # Top-level folder in the shared bucket = this namespace's restic repo.
-      bucket: naku-k8up/dawarich
+      bucket: k8up-k3s/dawarich
   backup:
     # -random schedules are stable per Schedule and spread load across apps.
     schedule: "@daily-random"

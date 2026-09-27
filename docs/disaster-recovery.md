@@ -5,18 +5,20 @@ Everything needed to rebuild lives in exactly two places:
 1. **This git repository** — cluster config, apps, and (SOPS-encrypted) every
    secret including the volume-encryption passphrase and S3 credentials.
 2. **Your personal age private key, kept offline** — the decryption root.
-   Without it the encrypted secrets in git and the encrypted backups in
-   Garage are unrecoverable. Verify you can find it before you need it.
+   Without it the encrypted secrets in git and the encrypted backups
+   (Longhorn on Garage, restic on B2) are unrecoverable. Verify you can
+   find it before you need it.
 
-Volume *data* is in the Garage S3 backup target (`garage.nakunga.com`,
-Tailscale-only), twice over (see [backups.md](backups.md)):
+Volume *data* lives off-cluster in two places (see [backups.md](backups.md)):
 
-- **Longhorn block backups** (`naku-longhorn` bucket, weekly + monthly) —
-  ciphertext volumes; restoring needs the crypto secret from git + age key.
-  This is the whole-cluster rebuild path below.
-- **K8up restic backups** (`naku-k8up` bucket, nightly files + SQL dumps) —
-  standard restic repos, readable from any tailnet machine with the repo
-  password from `infrastructure/k8up-config/manifests/global-secret.sops.yaml`.
+- **Longhorn block backups** → Garage (`naku-longhorn` bucket, weekly + monthly) —
+  ciphertext volumes on the Tailscale-only Garage endpoint; restoring needs
+  the crypto secret from git + age key. This is the whole-cluster rebuild
+  path below.
+- **K8up restic backups** → Backblaze B2 (`k8up-k3s/<namespace>`, nightly
+  files + SQL dumps) — standard restic repos, readable from any machine with
+  the repo password + B2 key from
+  `infrastructure/k8up-config/manifests/global-secret.sops.yaml`.
   For "the cluster is down and I need a file/database *right now*", this is
   the fast path — no cluster required (see backups.md "Restoring").
 

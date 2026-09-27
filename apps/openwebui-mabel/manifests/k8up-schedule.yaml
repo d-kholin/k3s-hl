@@ -32,7 +32,7 @@ spec:
     name: backup-pod
   backend:
     s3:
-      bucket: naku-k8up/openwebui-mabel
+      bucket: k8up-k3s/openwebui-mabel
   backup:
     schedule: "59 */6 * * *"
     failedJobsHistoryLimit: 2

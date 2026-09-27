@@ -1,6 +1,6 @@
 # K8up backups for this namespace: a nightly restic backup of every PVC
 # (Calibre library incl. metadata.db, app config incl. app.db, and the ingest
-# folder) into the Garage bucket folder naku-k8up/calibre-web-automated — a
+# folder) into the Backblaze B2 bucket folder k8up-k3s/calibre-web-automated — a
 # standard restic repo, browsable/restorable from any tailnet machine.
 # Endpoint, credentials, and repo password come from the operator globals
 # (k8up-global secret in the k8up namespace) — nothing app-specific here.
@@ -49,7 +49,7 @@ spec:
   backend:
     s3:
       # Top-level folder in the shared bucket = this namespace's restic repo.
-      bucket: naku-k8up/calibre-web-automated
+      bucket: k8up-k3s/calibre-web-automated
   backup:
     # -random schedules are stable per Schedule and spread load across apps.
     schedule: "@daily-random"

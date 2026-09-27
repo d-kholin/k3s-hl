@@ -1,9 +1,9 @@
 # Values for the k8up Helm chart (see application.yaml in this directory).
 #
 # All backend credentials are operator-level globals sourced from the
-# k8up-global secret (k8up-config app, SOPS-encrypted): S3 endpoint, access
+# k8up-global secret (k8up-config app, SOPS-encrypted): B2 S3 endpoint, access
 # key, secret key, and the shared restic repository password. Per-namespace
-# Schedules only set their bucket/folder (naku-k8up/<namespace>) — adding an
+# Schedules only set their bucket/folder (k8up-k3s/<namespace>) — adding an
 # app to backups needs a Schedule manifest and no new credentials.
 
 k8up:

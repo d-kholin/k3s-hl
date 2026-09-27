@@ -2,24 +2,24 @@
 
 | Tier | Tool | Cadence | What it's for |
 |------|------|---------|---------------|
-| File / dump level | **K8up + restic** → `naku-k8up` Garage bucket | nightly (`@daily-random`) | The usable tier: browse and restore single files or plain-SQL database dumps, from any tailnet machine, even with the cluster down |
+| File / dump level | **K8up + restic** → Backblaze B2 bucket `k8up-k3s` | nightly (`@daily-random`) | The usable tier: browse and restore single files or plain-SQL database dumps, from any machine with the credentials, even with the cluster down |
 | Block level | **Longhorn** → `naku-longhorn` Garage bucket | daily 03:00 + weekly Sat 04:30 + monthly (no local-only snapshot job) | Whole-volume disaster recovery (see [disaster-recovery.md](disaster-recovery.md)) |
 
-Both tiers store only ciphertext in Garage: Longhorn backups are dm-crypt
+Both tiers store only ciphertext off-cluster: Longhorn backups are dm-crypt
 volumes, and restic encrypts everything client-side with the repository
-password before upload (Garage-side encryption support is irrelevant).
+password before upload (object-store encryption is irrelevant).
 
 ## How the K8up tier is wired
 
 - **Operator**: `infrastructure/k8up/` (Helm, wave 1). All backend settings
   are operator-level globals from the `k8up-global` secret
   (`infrastructure/k8up-config/manifests/global-secret.sops.yaml`):
-  S3 endpoint, the `naku-k8up` Garage key, and the **shared restic repository
-  password**. Losing that password means losing every restic backup — keep a
-  copy wherever the offline age key lives.
+  B2 S3 endpoint, the application key for bucket `k8up-k3s`, and the
+  **shared restic repository password**. Losing that password means losing
+  every restic backup — keep a copy wherever the offline age key lives.
 - **Per app**: one `k8up-schedule.yaml` (Schedule + PodConfig) in the app's
   manifests. The Schedule only sets its bucket folder — each namespace is its
-  own standard restic repo at `naku-k8up/<namespace>`:
+  own standard restic repo at `k8up-k3s/<namespace>`:
   nightly backup, weekly `restic check`, weekly prune with retention
   `keepLast 3 / daily 14 / weekly 5 / monthly 6`.
 - **What gets backed up per namespace**: every PVC not annotated
@@ -43,18 +43,18 @@ password before upload (Garage-side encryption support is irrelevant).
 3. Databases: add a `k8up.io/backupcommand` annotation to the pod template
    and `k8up.io/backup: "false"` to the raw DB PVC.
 
-No Garage-side work and no new credentials — the bucket and key are shared.
+No B2-side work and no new credentials — the bucket and key are shared.
 
 ## Restoring
 
 ### Single files, from anywhere (works with the cluster down)
 
-Any tailnet machine with `restic`, the repo password, and the Garage key
+Any machine with `restic`, the repo password, and the B2 application key
 (all recoverable from git + the offline age key — see
 `sops -d infrastructure/k8up-config/manifests/global-secret.sops.yaml`):
 
 ```bash
-export RESTIC_REPOSITORY='s3:https://<endpoint>/naku-k8up/<namespace>'
+export RESTIC_REPOSITORY='s3:https://s3.us-east-005.backblazeb2.com/k8up-k3s/<namespace>'
 export RESTIC_PASSWORD='<BACKUP_GLOBALREPOPASSWORD>'
 export AWS_ACCESS_KEY_ID='<BACKUP_GLOBALACCESSKEYID>'
 export AWS_SECRET_ACCESS_KEY='<BACKUP_GLOBALSECRETACCESSKEY>'
@@ -102,14 +102,14 @@ spec:
 Whole-volume loss (or all of Longhorn gone) can also go through the Longhorn
 block-backup path in [disaster-recovery.md](disaster-recovery.md).
 
-## Backrest — web UI on the Garage host (out of cluster)
+## Backrest — web UI (out of cluster)
 
 [Backrest](https://github.com/garethgeorge/backrest) gives browse +
 click-restore over the same repos and keeps working when the cluster is
-down. Run it on the Garage host; per repo add an entry with:
+down. Per repo add an entry with:
 
-- Repo URI `s3:https://<endpoint>/naku-k8up/<namespace>`
-- The shared repo password and the `naku-k8up` key credentials
+- Repo URI `s3:https://s3.us-east-005.backblazeb2.com/k8up-k3s/<namespace>`
+- The shared repo password and the B2 application key credentials
   (hand them over out-of-band from the SOPS secret; nothing plaintext in git)
 
 **Read-only rule: configure no prune/forget/schedule plans in Backrest.**
@@ -117,15 +117,20 @@ The cluster owns retention; two concurrent pruners fight over restic locks
 (K8up's schedules assume they're the only writer). Browse, index, and
 restore only.
 
-## Garage-side setup (one-time, manual)
+## Backblaze B2 setup (one-time, manual)
 
-Done on the Garage host, outside this repo:
+Done in the B2 console, outside this repo:
 
-```
-garage key create naku-k8up
-garage bucket create naku-k8up
-garage bucket allow --read --write naku-k8up --key naku-k8up
-```
+1. Create private bucket `k8up-k3s`.
+2. Create an **application key** scoped to that bucket (read+write, allow
+   listing buckets). The account **master** key does **not** work with the
+   S3-compatible API.
+3. Note the bucket's S3 endpoint (e.g. `s3.us-east-005.backblazeb2.com`).
+4. Put endpoint + key id + application key into `global-secret.sops.yaml`.
 
-(Write access includes delete — prune runs from the cluster.) The key goes
-into `global-secret.sops.yaml`; repos are auto-initialized on first backup.
+Repos are auto-initialized on first backup under `k8up-k3s/<namespace>`.
+
+**Cutover note:** changing endpoint/bucket does not migrate existing restic
+history. Prior Garage repos (`naku-k8up/<ns>`) remain readable only with the
+old Garage credentials if that store is still up; new backups start fresh on
+B2 unless you `restic copy` between repositories.
