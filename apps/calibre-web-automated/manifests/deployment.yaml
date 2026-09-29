@@ -29,7 +29,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: calibre-web-automated
-          image: crocodilestick/calibre-web-automated:v4.0.7
+          image: crocodilestick/calibre-web-automated:v4.0.8
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
