@@ -1,8 +1,8 @@
 # K8up backup operator (Helm): restic file/app-level backups of app PVCs and
-# database dumps to Backblaze B2 (S3-compatible). Complements Longhorn's
-# block-level backups on Garage — restic repos are standard-format, so single
-# files are browsable and restorable from any machine even with the cluster
-# down (see docs/backups.md).
+# database dumps to the Garage S3 target. Complements Longhorn's block-level
+# backups — restic repos are standard-format, so single files are browsable
+# and restorable from any tailnet machine even with the cluster down
+# (see docs/backups.md).
 #
 # Wave 1 alongside the other operators; the wave-2 k8up-config app supplies
 # the k8up-global secret referenced by values.yaml. On a fresh cluster the
