@@ -31,16 +31,13 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Argo's repo-server gets kustomize from this exact KSOPS image.
-          # Extract that binary for CI instead of independently choosing a
-          # version which may render manifests differently.
-          ksops_image=$(awk '$1 == "image:" && $2 ~ /^viaductoss\/ksops:/ { print $2; exit }' \
-            infrastructure/argocd/manifests/repo-server-ksops-patch.yaml)
-          test -n "$ksops_image"
-          echo "Using Argo renderer from $ksops_image"
-          container_id=$(docker create "$ksops_image")
-          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
-          docker cp "$container_id:/usr/local/bin/kustomize" /tmp/kustomize
+          # KSOPS v4.5.1 builds its bundled kustomize from upstream v5.3.0.
+          # Download that release directly so CI does not depend on anonymous
+          # Docker Hub pulls (and their shared-runner rate limit).
+          kustomize_version=v5.3.0
+          curl -fsSL -o /tmp/kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${kustomize_version}/kustomize_${kustomize_version}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kustomize.tar.gz -C /tmp kustomize
           sudo install -m 0755 /tmp/kustomize /usr/local/bin/kustomize
 
           cd /tmp
