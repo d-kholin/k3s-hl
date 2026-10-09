@@ -1,5 +1,5 @@
 # K8up backups for this namespace: a nightly restic backup of /data into the
-# Backblaze B2 bucket folder k8up-k3s/actual-budget — a standard restic repo,
+# Garage bucket folder naku-k8up/actual-budget — a standard restic repo,
 # browsable/restorable from any tailnet machine.
 # Endpoint, credentials, and repo password come from the operator globals
 # (k8up-global secret in the k8up namespace) — nothing app-specific here.
@@ -47,7 +47,7 @@ spec:
   backend:
     s3:
       # Top-level folder in the shared bucket = this namespace's restic repo.
-      bucket: k8up-k3s/actual-budget
+      bucket: naku-k8up/actual-budget
   backup:
     # No 6h-granularity "-random" descriptor exists in K8up, so this uses a
     # fixed cron with a non-zero minute offset (37, not top-of-hour) to spread
