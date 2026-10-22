@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: omnitools
-          image: iib0011/omni-tools:0.6.0
+          image: iib0011/omni-tools:0.7.0
           imagePullPolicy: IfNotPresent
           # Bypass the root-oriented image entrypoint and use the hardened
           # high-port nginx configuration mounted below.
