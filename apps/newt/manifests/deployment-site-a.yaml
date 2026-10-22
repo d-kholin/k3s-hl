@@ -42,7 +42,7 @@ spec:
             - proxy.thegriffiths.ca
       containers:
         - name: newt
-          image: docker.io/fosrl/newt:1.18.1
+          image: docker.io/fosrl/newt:1.19.0
           imagePullPolicy: IfNotPresent
           env:
             - name: PANGOLIN_ENDPOINT
