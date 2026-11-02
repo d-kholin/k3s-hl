@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bambuddy
+  namespace: bambuddy
+  labels:
+    app: bambuddy
+spec:
+  replicas: 1
+  # The SQLite database and archive use an RWO volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bambuddy
+      app.kubernetes.io/name: bambuddy
+  template:
+    metadata:
+      labels:
+        app: bambuddy
+        app.kubernetes.io/name: bambuddy
+    spec:
+      automountServiceAccountToken: false
+      # The image entrypoint starts as root, fixes volume ownership, then drops
+      # to PUID/PGID 1000. No host networking or privileged ports are exposed:
+      # printers are added manually by LAN IP and Virtual Printer is disabled.
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: bambuddy
+          image: ghcr.io/maziggy/bambuddy:1.2.5.7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: TZ
+              value: America/Edmonton
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: PORT
+              value: "8000"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: logs
+              mountPath: /app/logs
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: bambuddy-data-encrypted
+        # Operational logs do not need durable storage; application data,
+        # archives, backups, and the database all live under /app/data.
+        - name: logs
+          emptyDir: {}

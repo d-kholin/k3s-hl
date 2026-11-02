@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bambuddy-data-encrypted
+  namespace: bambuddy
+  annotations:
+    # Preserve the print archive and SQLite database if the app is removed.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-encrypted
+  resources:
+    requests:
+      storage: 20Gi

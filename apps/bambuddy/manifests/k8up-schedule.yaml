@@ -1,0 +1,51 @@
+# Nightly file backup of BambuBuddy's SQLite database, settings, and print
+# archive to its own restic repository in the shared Garage bucket.
+# Longhorn snapshots provide the complementary point-in-time recovery layer.
+apiVersion: k8up.io/v1
+kind: PodConfig
+metadata:
+  name: backup-pod
+  namespace: bambuddy
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backup
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: backup
+  namespace: bambuddy
+spec:
+  podConfigRef:
+    name: backup-pod
+  backend:
+    s3:
+      bucket: naku-k8up/bambuddy
+  backup:
+    schedule: "@daily-random"
+    failedJobsHistoryLimit: 2
+    successfulJobsHistoryLimit: 2
+  check:
+    schedule: "@weekly-random"
+  prune:
+    schedule: "@weekly-random"
+    retention:
+      keepLast: 3
+      keepDaily: 14
+      keepWeekly: 5
+      keepMonthly: 6

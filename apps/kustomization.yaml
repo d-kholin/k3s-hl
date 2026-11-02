@@ -6,6 +6,7 @@ kind: Kustomization
 
 resources:
   - actual-budget/application.yaml
+  - bambuddy/application.yaml
   - bentopdf/application.yaml
   - calibre-web-automated/application.yaml
   - cloudflare-ddns/application.yaml
