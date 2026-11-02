@@ -50,6 +50,12 @@ spec:
             capabilities:
               drop:
                 - ALL
+              # Required by the image entrypoint to normalize Longhorn volume
+              # ownership and then use gosu to become PUID/PGID 1000.
+              add:
+                - CHOWN
+                - SETGID
+                - SETUID
           volumeMounts:
             - name: data
               mountPath: /app/data
