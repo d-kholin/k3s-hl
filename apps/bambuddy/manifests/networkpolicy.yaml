@@ -1,0 +1,32 @@
+# Keep BambuBuddy private inside the cluster. Pangolin/Newt is the only ingress
+# path for print.thegriffiths.ca. Egress remains open so BambuBuddy can connect
+# to printers added manually by LAN IP and pull application updates/metadata.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: bambuddy
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-newt-ingress
+  namespace: bambuddy
+spec:
+  podSelector:
+    matchLabels:
+      app: bambuddy
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: newt
+      ports:
+        - protocol: TCP
+          port: 8000

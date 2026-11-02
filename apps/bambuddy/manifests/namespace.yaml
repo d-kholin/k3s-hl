@@ -1,0 +1,13 @@
+# BambuBuddy's entrypoint starts as root to normalize volume ownership before
+# dropping to PUID/PGID, so this namespace uses baseline rather than restricted.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bambuddy
+  annotations:
+    # Deleting the namespace would take the data PVC with it — never let Argo
+    # prune or cascade-delete it.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
