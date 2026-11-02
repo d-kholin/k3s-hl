@@ -51,9 +51,12 @@ spec:
               drop:
                 - ALL
               # Required by the image entrypoint to normalize Longhorn volume
-              # ownership and then use gosu to become PUID/PGID 1000.
+              # ownership and then use gosu to become PUID/PGID 1000. The image
+              # also gives python3 cap_net_bind_service=ep at build time, so it
+              # must remain in the bounding set for uvicorn to be executable.
               add:
                 - CHOWN
+                - NET_BIND_SERVICE
                 - SETGID
                 - SETUID
           volumeMounts:
