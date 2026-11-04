@@ -1,0 +1,50 @@
+apiVersion: k8up.io/v1
+kind: PodConfig
+metadata:
+  name: backup-pod
+  namespace: virtues-and-vices
+spec:
+  template:
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: backup
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: k8up.io/v1
+kind: Schedule
+metadata:
+  name: backup
+  namespace: virtues-and-vices
+spec:
+  podConfigRef:
+    name: backup-pod
+  backend:
+    s3:
+      # Top-level folder in the shared bucket = this namespace's restic repo.
+      bucket: naku-k8up/virtues-and-vices
+  backup:
+    # -random schedules are stable per Schedule and spread load across apps.
+    schedule: "@daily-random"
+    failedJobsHistoryLimit: 2
+    successfulJobsHistoryLimit: 2
+  check:
+    schedule: "@weekly-random"
+  prune:
+    schedule: "@weekly-random"
+    retention:
+      keepLast: 3
+      keepDaily: 14
+      keepWeekly: 5
+      keepMonthly: 6

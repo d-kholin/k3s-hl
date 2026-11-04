@@ -25,3 +25,4 @@ resources:
   - teslamate/application.yaml
   - tooltracker/application.yaml
   - vaultwarden/application.yaml
+  - virtues-and-vices/application.yaml
