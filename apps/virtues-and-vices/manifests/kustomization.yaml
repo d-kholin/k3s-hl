@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: virtues-and-vices
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+  - networkpolicy.yaml
+  - k8up-schedule.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/name: virtues-and-vices
+    includeSelectors: false
+
+generators:
+  - ksops-generator.yaml
+
+configMapGenerator:
+  - name: virtues-and-vices-backup
+    files:
+      - sqlite-backup.mjs

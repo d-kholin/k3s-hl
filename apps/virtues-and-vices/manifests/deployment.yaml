@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: virtues-and-vices
+  namespace: virtues-and-vices
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: virtues-and-vices
+      app.kubernetes.io/name: virtues-and-vices
+  template:
+    metadata:
+      labels:
+        app: virtues-and-vices
+        app.kubernetes.io/name: virtues-and-vices
+      annotations:
+        k8up.io/backupcommand: node /backup/sqlite-backup.mjs
+        k8up.io/file-extension: .sqlite
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: virtues-and-vices
+          image: ghcr.io/d-kholin/virtues-and-vices:1.5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5173
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: DEMO_MODE
+              value: "false"
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "5173"
+            - name: APP_URL
+              value: https://habits.thegriffiths.ca
+            - name: TRUST_PROXY
+              value: "1"
+            - name: DB_PATH
+              value: /app/data/app.sqlite
+            - name: TZ
+              value: America/Edmonton
+          envFrom:
+            - secretRef:
+                name: virtues-and-vices-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
+            - name: backup-script
+              mountPath: /backup
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: virtues-and-vices-data-encrypted
+        - name: tmp
+          emptyDir: {}
+        - name: backup-script
+          configMap:
+            name: virtues-and-vices-backup
